@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assist_Service", "Assist_Service\Assist_Service.csproj", "{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assist_TSR", "Assist_TSR\Assist_TSR.csproj", "{9858DDA4-8FC0-4B46-82B7-92E74577A19E}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Assist_Setup", "Assist_Setup\Assist_Setup.vdproj", "{B0FC534F-DB60-4902-9750-DD280E23541F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		DefaultBuild|Any CPU = DefaultBuild|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}.DefaultBuild|Any CPU.ActiveCfg = Debug|Any CPU
+		{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}.DefaultBuild|Any CPU.Build.0 = Debug|Any CPU
+		{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A05CC1FF-8AD0-48AA-ACA9-6D9A6D052ABB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9858DDA4-8FC0-4B46-82B7-92E74577A19E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9858DDA4-8FC0-4B46-82B7-92E74577A19E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9858DDA4-8FC0-4B46-82B7-92E74577A19E}.DefaultBuild|Any CPU.ActiveCfg = Debug|Any CPU
+		{9858DDA4-8FC0-4B46-82B7-92E74577A19E}.DefaultBuild|Any CPU.Build.0 = Debug|Any CPU
+		{9858DDA4-8FC0-4B46-82B7-92E74577A19E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9858DDA4-8FC0-4B46-82B7-92E74577A19E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0FC534F-DB60-4902-9750-DD280E23541F}.Debug|Any CPU.ActiveCfg = Debug
+		{B0FC534F-DB60-4902-9750-DD280E23541F}.DefaultBuild|Any CPU.ActiveCfg = Debug
+		{B0FC534F-DB60-4902-9750-DD280E23541F}.Release|Any CPU.ActiveCfg = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

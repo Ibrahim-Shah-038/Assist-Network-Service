@@ -1,0 +1,18 @@
+﻿[
+    {
+        "SourceNode": "Node1",
+        "TriggerApp": "vlc",
+        "TargetNodes": [
+            {
+                "NodeName": "Node2",
+                "LaunchApp": "Code",
+                "LaunchArguments": "/q"
+            },
+            {
+                "NodeName": "Node4",
+                "LaunchApp": "WINWORD",
+                "LaunchArguments": "/q"
+            }
+        ]
+    }
+]
