@@ -13,10 +13,17 @@ namespace Assist_Service.Services
         private readonly object _configLock = new object();
         private List<RuleConfig> _currentRules;
         private readonly string _customConfigPath;
+        private string _ConfigAddressFilePath;
+        private readonly Test_Log Log = new Test_Log();
 
         public RuleProcessingService()
         {
             _customConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CustomConfigPath.txt");
+        }
+        public string RuleAddressFile()
+        {
+            _ConfigAddressFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CustomConfigPath.txt");
+            return _ConfigAddressFilePath;
         }
 
         public List<RuleConfig> GetCurrentRules()
@@ -91,14 +98,17 @@ namespace Assist_Service.Services
             }
         }
 
-        private string GetActiveConfigPath()
+        public string GetActiveConfigPath()
         {
             string customPath = GetStoredCustomPath();
             if (!string.IsNullOrEmpty(customPath) && File.Exists(customPath))
             {
+                Log.Log($"Path found : {customPath}");
                 return customPath;
             }
+            Log.Log($"Path not found : {customPath}");
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RulesConfig.json");
+            
         }
 
         private string GetStoredCustomPath()

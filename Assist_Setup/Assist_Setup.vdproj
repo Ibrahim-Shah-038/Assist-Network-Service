@@ -27,6 +27,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_0788939212F74B1580BC8EAC8C60A2B0"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_07F8912D980ADFA8C27C67E196D5890E"
         "OwnerKey" = "8:_5EEBB413166371C4FFF478DAF763AA09"
         "MsmSig" = "8:_UNDEFINED"
@@ -52,6 +58,12 @@
         "Entry"
         {
         "MsmKey" = "8:_47E512C9FECA4FC7AD350EE2FDB33A3E"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_4F84C18CFD4D413AB82862A25C8D152A"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -107,6 +119,12 @@
         {
         "MsmKey" = "8:_647A7797EA5747C5113E4437FAEA0E5D"
         "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_754F838FBCE740CA8A5BAA49A1F58E74"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -215,6 +233,12 @@
         {
         "MsmKey" = "8:_E67C3AE97EEACF04D99DC8B7EF1B0653"
         "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_E74301A593774A9795A89109E3AB49B2"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -410,6 +434,14 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
             }
         }
         "Release"
@@ -434,6 +466,14 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
             }
         }
     }
@@ -493,6 +533,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0788939212F74B1580BC8EAC8C60A2B0"
+            {
+            "SourcePath" = "8:..\\Assist_Service\\bin\\Debug\\Closure_log.log"
+            "TargetName" = "8:Closure_log.log"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_07F8912D980ADFA8C27C67E196D5890E"
@@ -555,6 +615,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4F84C18CFD4D413AB82862A25C8D152A"
+            {
+            "SourcePath" = "8:..\\Assist_Service\\bin\\Debug\\test_log.log"
+            "TargetName" = "8:test_log.log"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5140DC636F63410EA3F452EFA25AB804"
@@ -668,6 +748,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_754F838FBCE740CA8A5BAA49A1F58E74"
+            {
+            "SourcePath" = "8:..\\Assist_Service\\bin\\Debug\\RulesAddress.txt"
+            "TargetName" = "8:RulesAddress.txt"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_7832C367896B300A3D835E39143ED19D"
@@ -843,6 +943,26 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E74301A593774A9795A89109E3AB49B2"
+            {
+            "SourcePath" = "8:..\\Assist_Service\\bin\\Debug\\CustomConfigPath.txt"
+            "TargetName" = "8:CustomConfigPath.txt"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_E9E2B04459ED43F2E5FECDDF9EF1789A"
@@ -1026,7 +1146,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Assist_Setup"
         "ProductCode" = "8:{F68A3D22-9B2F-428B-B122-769FD6555CEB}"
-        "PackageCode" = "8:{42B182F5-0C24-4C32-AC01-5D737D979E11}"
+        "PackageCode" = "8:{361000F7-8D1D-40B3-86E0-9E1DD83BE4A5}"
         "UpgradeCode" = "8:{E5CCA9EA-7609-410A-B579-C30851FC6E0F}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"

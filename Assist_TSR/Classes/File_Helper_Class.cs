@@ -1,10 +1,21 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 
-namespace Assist_TSR.Utilities
+namespace Assist_TSR.Classes
 {
+
+    internal class File_Helper_Class
+    {
+    }
+
+    // Class For Thread-Safe File Operations
+
     public static class FileHelper
     {
         private static readonly object _fileLock = new object();

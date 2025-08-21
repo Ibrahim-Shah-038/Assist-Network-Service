@@ -15,19 +15,10 @@ namespace Assist_Service.Models
     /// </summary>
     public class Peer
     {
-        /// <summary>
-        /// Name of the peer node
-        /// </summary>
         public string NodeName { get; set; }
-
-        /// <summary>
-        /// Network endpoint of the peer
-        /// </summary>
         public IPEndPoint EndPoint { get; set; }
-
-        /// <summary>
-        /// Last time the peer was seen
-        /// </summary>
         public DateTime LastSeen { get; set; }
+        public bool LeftGracefully { get; set; } = false;
+        public int MissedHeartbeats { get; set; } = 0;
     }
 }

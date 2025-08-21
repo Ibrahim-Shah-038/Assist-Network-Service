@@ -13,28 +13,30 @@ using Newtonsoft.Json;
 using System.Text.Json;
 using System.Windows.Forms.VisualStyles;
 using System.Linq;
-using System.Data;
+//using System.Data;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Runtime.InteropServices;
 using System.Net.NetworkInformation;
 using System.Reflection;
 using static System.Windows.Forms.LinkLabel;
-
+using Assist_TSR.IPC_Handler;
+using Assist_TSR.Utilities;
+using Assist_TSR.Event_Handler;
+using Assist_TSR.Classes;
 
 
 namespace Assist_TSR.Forms
 {
 
-
-
     public partial class Form1 : Form
     {
+
         private Thread launchServerThread; // Remove nullable annotation
-        private bool isRunning = false;
+        private Thread closureServerThread;
+        public bool isRunning { get; private set; } = false;
         private NotifyIcon notifyIcon; // Manually declare NotifyIcon
         private System.Windows.Forms.Timer refreshTimer, statusTimer;
         private string _selectedSourceNode = null;
-        private static bool hasWarnedUser = false;
         private NodeConfig _nodeConfig;
         private const string PipeName = "CustomRulesConfigPipe";
         Dictionary<string, (bool isSourceNode, List<string> applications)> nodeApplications = new Dictionary<string, (bool, List<string>)>();
@@ -44,157 +46,174 @@ namespace Assist_TSR.Forms
         private readonly object fileLock = new object();
 
         // Config_App_Status_IPC
-        private List<NodeConfig> _config;
+        private List<NodeConfig> _config = new List<NodeConfig>();
         private List<AppStatus> _statuses = new List<AppStatus>();
+        private readonly object _statusLock = new object();
+        private Listen_App_Status listen_app_status;
+
+        // OBJECT DECLARATION
+        Server my_server;
+        Logging loger;
+        Request_Data node_name;
+        Request_Data fetch_data;
+        Get_File_Path config_path;
+        Notifying_Service notifying_service;
+        Send_Path send_custom_rule_path;
+        Get_List_Rules get_list_rules;
+        Display_Config_User display_config_user;
+        Show show_message;
+        Loading_Config loader;
+        Get_Peers peers_helper;
+        Timer_ timer_;
+        Get_Rules_Path get_rules_path;
+        Read_Rules read_rules;
+        Rule_Class myRule;
+        //Listen_App_Status _listenAppStatus;
 
 
 
         public Form1()
         {
-            InitializeComponent();
-
-            // Initialize other components
-            InitializeSystemTrayIcon();
-            StartLaunchServer();
-            InitializeTimer(); // Initialize the timer
-            InitializeDataGridView();
-            // Initialize log file path FIRST
-            logFilePath = ResolveLogPath();
-
-            // Setting Up Tree Status
-            LoadConfig();
-            StartListeningToAppStatusPipe();
-            SetupTreeView();
-
-            // Set log file path to match your service
-            //logFilePath = Path.Combine("E:\\Assist\\Assist_Service\\Assist_Service\\bin\\Debug", "service.log");
-            InitializeLogViewer(); // Initialize log viewer
-
-            // Attach event handlers
-            this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
-            dataGridView1.CellClick += dataGridView1_CellClick;
-
-            // Attach the DoubleClick event handler for listView1
-            listView1.DoubleClick += listView1_DoubleClick;
-
-            
-
-            // Attach the Save button click event handler
-            btnSave.Click += btnSave_Click;
-
-            // Attach Event handler for TreeView1
-            treeView1.AfterSelect += treeView1_AfterSelect;
-
-            // Set the ListView to display items in a vertical list
-            listView1.View = View.List;
-            listView1.Scrollable = true; // Enable scrolling if needed
-
-            // Attach the Reset button click event handler
-            btnReset.Click += btnReset_Click;
-
-
-
-        }
-
-        // LOGGING FOR TSR
-
-        private void Log(string message)
-        {
-            // Simple implementation - you can enhance this as needed
-            System.Diagnostics.Debug.WriteLine(message);
-
-            // Optional: Write to a log file
-            string logPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Assist_TSR.log");
-            File.AppendAllText(logPath, $"{DateTime.Now}: {message}{Environment.NewLine}");
-        }
-
-        // GETTING DATA FOR GENERAL TAB FROM SERVICE
-        private async Task<string> RequestDataFromServiceAsync(string requestType)
-        {
-            NamedPipeClientStream pipeClient = null;
             try
             {
-                string pipeName = requestType == "GET_NODE_NAME"
-                    ? "AssistNodeNamePipe"
-                    : "AssistActivePresetPipe";
+                Log("Constructor Start");
 
-                pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
 
-                // Connect with timeout (same as synchronous version)
-                var connectTask = pipeClient.ConnectAsync();
-                var timeoutTask = Task.Delay(3000);
-                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
 
-                if (completedTask == timeoutTask)
+                // OBJECT INSTANCES
+                my_server = new Server(this);
+                loger = new Logging();
+                node_name = new Request_Data(this);
+                fetch_data = new Request_Data(this);
+                config_path = new Get_File_Path();
+                notifying_service = new Notifying_Service();
+                send_custom_rule_path = new Send_Path();
+                get_list_rules = new Get_List_Rules();
+                display_config_user = new Display_Config_User();
+                show_message = new Show();
+                loader = new Loading_Config();
+                peers_helper = new Get_Peers();
+                timer_ = new Timer_(UpdateDataGridViewWithPeers);
+                get_rules_path = new Get_Rules_Path();
+                read_rules = new Read_Rules();
+                myRule = new Rule_Class();
+                Log("Initialized all helper classes");
+
+                InitializeComponent();
+                Log("Called InitializeComponent");
+
+                InitializeSystemTrayIcon();
+                Log("Initialized system tray icon");
+
+                my_server.StartLaunchServer();
+                Log("Server launch started");
+
+                my_server.StartClosureServer();
+                Log("Closure Server launch started");
+
+                timer_.InitializeTimer();
+                Log("Timer initialized");
+
+                InitializeDataGridView();
+                Log("DataGridView initialized");
+
+                logFilePath = ResolveLogPath();
+                Log("Resolved log file path");
+
+                loader.LoadConfig();
+                Log("Config loaded");
+
+                listen_app_status = new Listen_App_Status(_statuses, new Action(() =>
                 {
-                    throw new System.TimeoutException("Service connection timeout");
-                }
-                await connectTask; // This will throw if there was a connection error
+                    if (InvokeRequired)
+                        Invoke(new Action(UpdateTreeView));
+                    else
+                        UpdateTreeView();
+                }), _statusLock);
+                Log("Initialized listen_app_status");
 
-                // Write request
-                var writer = new StreamWriter(pipeClient) { AutoFlush = true };
-                await writer.WriteLineAsync(requestType);
+                listen_app_status.StartListeningToAppStatusPipe();
+                Log("Started listening to pipe");
 
-                // Read response
-                var reader = new StreamReader(pipeClient);
-                string response = await reader.ReadLineAsync();
+                SetupTreeView();
+                Log("Tree view set up");
 
-                return response ?? "Unknown";
-            }
-            catch (System.TimeoutException)
-            {
-                WarnOnce("Service connection timeout");
-                return "Unknown";
+                InitializeLogViewer();
+                Log("Log viewer initialized");
+                
+
+                // Attach event handlers
+                this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
+                dataGridView1.CellClick += dataGridView1_CellClick;
+                listView1.DoubleClick += listView1_DoubleClick;
+                btnSave.Click += btnSave_Click;
+                treeView1.AfterSelect += treeView1_AfterSelect;
+                listView1.View = View.List;
+                listView1.Scrollable = true;
+                btnReset.Click += btnReset_Click;
+                Log("Event handlers attached");
+
+                Log("Constructor End");
             }
             catch (Exception ex)
             {
-                WarnOnce($"Service communication failed: {ex.Message}");
-                return "Unknown";
-            }
-            finally
-            {
-                pipeClient?.Dispose();
+                Log("Exception in Form1 constructor: " + ex.ToString());
             }
         }
 
-        // Notification Bar within UI (unchanged)
+        private void Log(string message)
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assist_TSR.txt");
+                File.AppendAllText(path, $"{DateTime.Now}: {message}{Environment.NewLine}");
+            }
+            catch
+            {
+                // Silent catch to avoid recursive logging exceptions
+            }
+        }
+
+        // LINKED WITH REQUEST_DATA.CS FILE IN IPC_HANDLER FOLDER
+
+        public void ShowNotificationSafe(string message)
+        {
+            if (InvokeRequired)
+            {
+                Invoke((MethodInvoker)(() => ShowNotificationSafe(message)));
+                return;
+            }
+
+            ShowNotification(message);
+        }
+
         private void ShowNotification(string message)
         {
             notificationLabel.Text = message;
             notificationPanel.Visible = true;
         }
 
+        // Notification Bar within UI (unchanged)
+
+
         private void closeNotificationButton_Click_1(object sender, EventArgs e)
         {
             notificationPanel.Visible = false;
         }
 
-        private void WarnOnce(string message)
-        {
-            if (!hasWarnedUser)
-            {
-                ShowNotification(message);
-                hasWarnedUser = true;
-            }
-        }
-
         // Updated to use the new async method directly
-        private async Task<string> FetchDataAsync(string requestType)
-        {
-            await Task.Delay(100); // Let server initialize
-            return await RequestDataFromServiceAsync(requestType);
-        }
+        
 
         // UPDATING_GENERAL_TAB
         private async void UpdateUIWithStatus()
         {
             // Request Node Name from the service
-            string nodeName = await FetchDataAsync("GET_NODE_NAME");
+            string nodeName = await fetch_data.FetchDataAsync("GET_NODE_NAME");
 
             node_value.Text = nodeName;
 
             // Request Active Preset from the service
-            string activePreset = await FetchDataAsync("GET_ACTIVE_PRESET");
+            string activePreset = await fetch_data.FetchDataAsync("GET_ACTIVE_PRESET");
             preset_value.Text = activePreset;
 
             // Update Console Status directly from the Windows Forms application
@@ -246,9 +265,21 @@ namespace Assist_TSR.Forms
                     launchServerThread.Join(500); // Cleanup any previous thread
                 }
 
-                launchServerThread = new Thread(StartLaunchServer);
+                
+
+                launchServerThread = new Thread(my_server.StartLaunchServer);
                 launchServerThread.IsBackground = true;
                 launchServerThread.Start();
+
+                // New closure server code (same pattern)
+                if (closureServerThread != null && closureServerThread.IsAlive)
+                {
+                    closureServerThread.Join(500); // Cleanup any previous thread
+                }
+
+                closureServerThread = new Thread(my_server.StartClosureServer);
+                closureServerThread.IsBackground = true;
+                closureServerThread.Start();
 
                 // Immediate UI feedback
                 con_stat_val.Text = "Running";
@@ -302,75 +333,6 @@ namespace Assist_TSR.Forms
             Environment.Exit(0); // Forceful exit if needed
         }
 
-        // Form Clean Ups
-
-
-
-        private void StartLaunchServer()
-        {
-            while (isRunning)
-            {
-                try
-                {
-                    using (NamedPipeServerStream pipeServer = new NamedPipeServerStream("LaunchHandlerPipe", PipeDirection.InOut))
-                    {
-                        Debug.WriteLine("Waiting for launch request...");
-                        pipeServer.WaitForConnection();
-                        Debug.WriteLine("Launch request received.");
-
-                        using (StreamReader reader = new StreamReader(pipeServer))
-                        using (StreamWriter writer = new StreamWriter(pipeServer))
-                        {
-                            string request = reader.ReadLine();
-                            Debug.WriteLine($"Received request: {request}");
-
-                            if (request != null && request.StartsWith("LAUNCH:"))
-                            {
-                                string appName = request.Substring("LAUNCH:".Length);
-
-                                if (LaunchApplication(appName))
-                                {
-                                    writer.WriteLine("SUCCESS");
-                                    Debug.WriteLine($"Successfully launched: {appName}");
-                                }
-                                else
-                                {
-                                    writer.WriteLine("ERROR: Failed to launch");
-                                    Debug.WriteLine($"Failed to launch: {appName}");
-                                }
-
-                                writer.Flush();
-                            }
-                            else
-                            {
-                                writer.WriteLine("ERROR: Invalid request");
-                                writer.Flush();
-                                Debug.WriteLine("Invalid request received.");
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error in Launch Handler: {ex.Message}");
-                }
-            }
-        }
-
-        private bool LaunchApplication(string appName)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo(appName) { UseShellExecute = true });
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error launching application: {ex.Message}");
-                return false;
-            }
-        }
-
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
@@ -407,39 +369,9 @@ namespace Assist_TSR.Forms
             statusTimer.Start();
 
             UpdateServiceStatus();
+            RefreshNetworkStatus();
 
         }
-
-        private void panel1_Paint(object sender, PaintEventArgs e)
-        {
-            
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void flowLayoutPanel1_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
-        private void flowLayoutPanel3_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
-        private void panel4_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
-        private void label2_Click(object sender, EventArgs e)
-        {
-
-        }
-
 
         private async void start_Click(object sender, EventArgs e)
         {
@@ -506,19 +438,20 @@ namespace Assist_TSR.Forms
                 }
 
                 // Get the appropriate config file path
-                string configPath = GetConfigFilePath();
+                string configPath = config_path.GetConfigFilePath();
 
-                // Create configuration object
+                // Create a new configuration object (this will replace any existing content)
                 var config = new NodeConfig
                 {
-                    NodeName = nodeName
+                    NodeName = nodeName  // This will be the only content in the file
                 };
 
-                // Thread-safe write operation
+                // This will overwrite the entire file with the new configuration
+                // Any previous content will be completely replaced
                 FileHelper.WriteJsonWithRetry(configPath, config);
 
                 // Notify the service about the change
-                NotifyServiceAboutConfigChange(nodeName);
+                notifying_service.NotifyServiceAboutConfigChange(nodeName);
 
                 MessageBox.Show("Configuration saved successfully!");
             }
@@ -528,102 +461,6 @@ namespace Assist_TSR.Forms
             }
         }
 
-        private string GetConfigFilePath()
-        {
-            // List of possible config file locations (order determines priority)
-            List<string> possibleConfigPaths = new List<string>
-    {
-        // 1. First check development path (only on dev machine)
-        @"E:\Assist\Assist_Service\Assist_Service\bin\Debug\NodeConfig.json",
-        
-        // 2. Check application startup directory
-        Path.Combine(Application.StartupPath, "NodeConfig.json"),
-        
-        // 3. Check common application data directory
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "Assist",
-            "NodeConfig.json"
-        ),
-        
-        // 4. Fallback to executable directory (for service)
-        Path.Combine(
-            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-            "NodeConfig.json"
-        )
-    };
-
-            string configPath = null;
-
-            // Find the first existing config file
-            foreach (var path in possibleConfigPaths)
-            {
-                if (File.Exists(path))
-                {
-                    configPath = path;
-                    break;
-                }
-            }
-
-            // If no existing file found, determine where we should create it
-            if (configPath == null)
-            {
-                // Choose where to create new config file based on environment
-                if (System.Diagnostics.Debugger.IsAttached)
-                {
-                    // Development environment - use debug folder
-                    configPath = possibleConfigPaths[0];
-                }
-                else if (Environment.UserInteractive)
-                {
-                    // Running as application - use application data folder
-                    configPath = possibleConfigPaths[2];
-
-                    // Ensure directory exists
-                    Directory.CreateDirectory(Path.GetDirectoryName(configPath));
-                }
-                else
-                {
-                    // Running as service - use executable directory
-                    configPath = possibleConfigPaths[3];
-                }
-
-                // Create default config file
-                var defaultConfig = new NodeConfig { NodeName = "DefaultNode" };
-                FileHelper.WriteJsonWithRetry(configPath, defaultConfig);
-            }
-
-            return configPath;
-        }
-
-        // Communication with Windows Service
-        private void NotifyServiceAboutConfigChange(string newNodeName)
-        {
-            try
-            {
-                using (var pipeClient = new NamedPipeClientStream(".", "AssistNodeNamePipe", PipeDirection.InOut))
-                {
-                    pipeClient.Connect(3000); // 3 second timeout
-
-                    var writer = new StreamWriter(pipeClient);
-                    var reader = new StreamReader(pipeClient);
-
-                    writer.WriteLine("UPDATE_NODE_NAME:" + newNodeName);
-                    writer.Flush();
-
-                    string response = reader.ReadLine();
-
-                    if (response != "OK")
-                    {
-                        Log($"Service responded with: {response}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error notifying service: {ex.Message}");
-            }
-        }
 
         // Custom Preset Selection
 
@@ -638,169 +475,55 @@ namespace Assist_TSR.Forms
                 {
                     try
                     {
-                        await SendPathToService(openFileDialog.FileName);
-                        ShowMessage("Configuration sent to service",
+                        loger.Log($"Attempting to send configuration: {openFileDialog.FileName}");
+                        await send_custom_rule_path.SendPathToService(openFileDialog.FileName);
+
+                        loger.Log($"Successfully sent configuration: {openFileDialog.FileName}");
+                        show_message.ShowMessage("Configuration sent to service",
                                   $"Successfully sent:\n{openFileDialog.FileName}");
+                        //preset_value.Text = Path.GetFileName(openFileDialog.FileName);
                     }
                     catch (Exception ex)
                     {
-                        ShowError("Configuration Error",
-                                $"Failed to send configuration:\n{ex.Message}");
+                        string errorMsg = $"Failed to send configuration: {ex.Message}";
+                        loger.Log(errorMsg);
+
+                        show_message.ShowError("Configuration Error", errorMsg);
                     }
                 }
             }
         }
+
 
         // Button click event for getting current config
         private async void btnGetConfig_Click(object sender, EventArgs e)
         {
             try
             {
-                var config = await GetConfigFromService();
-                DisplayConfig(config);
+                var config = await get_list_rules.GetConfigFromService();
+                display_config_user.DisplayConfig(config);
             }
             catch (Exception ex)
             {
-                ShowError("Configuration Error",
+                show_message.ShowError("Configuration Error",
                         $"Failed to get configuration:\n{ex.Message}");
             }
         }
 
-        // Send file path to service via named pipe
-        private async Task SendPathToService(string path)
-        {
-            await Task.Run(() =>
-            {
-                using (var pipeClient = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut))
-                {
-                    pipeClient.Connect(5000); // 5 second timeout
-                    using (var writer = new StreamWriter(pipeClient))
-                    {
-                        writer.Write(path);
-                        writer.Flush();
-                    }
-                }
-            });
-        }
-
-        // Get config from service via named pipe
-        private async Task<List<RuleConfig>> GetConfigFromService()
-        {
-            return await Task.Run(() =>
-            {
-                using (var pipeClient = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut))
-                {
-                    pipeClient.Connect(5000); // 5 second timeout
-                    using (var writer = new StreamWriter(pipeClient))
-                    using (var reader = new StreamReader(pipeClient))
-                    {
-                        writer.Write("GET_CONFIG");
-                        writer.Flush();
-                        string json = reader.ReadToEnd();
-                        return JsonConvert.DeserializeObject<List<RuleConfig>>(json);
-                    }
-                }
-            });
-        }
-
-        // Display the configuration in a readable format
-        private void DisplayConfig(List<RuleConfig> config)
-        {
-            if (config == null || config.Count == 0)
-            {
-                ShowMessage("Configuration", "No rules configured");
-                return;
-            }
-
-            var result = new System.Text.StringBuilder();
-            result.AppendLine("Current Configuration Rules");
-            result.AppendLine("==========================");
-
-            foreach (var rule in config)
-            {
-                result.AppendLine($"\nSource Node: {rule.SourceNode}");
-                result.AppendLine($"Trigger App: {rule.TriggerApp}");
-                result.AppendLine("Target Nodes:");
-
-                if (rule.TargetNodes != null)
-                {
-                    foreach (var target in rule.TargetNodes)
-                    {
-                        result.AppendLine($"- {target.NodeName} (Launch: {target.LaunchApp})");
-                    }
-                }
-                else
-                {
-                    result.AppendLine("No target nodes configured");
-                }
-            }
-
-            ShowMessage("Current Configuration", result.ToString());
-        }
-
-        // Helper method for success messages
-        private void ShowMessage(string title, string message)
-        {
-            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        // Helper method for error messages
-        private void ShowError(string title, string message)
-        {
-            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-
-        // Setting up Configured App Status IPC
-
-        private void LoadConfig()
-        {
-            // List of possible config file locations (order determines priority)
-            List<string> possibleConfigPaths = new List<string>
-    {
-        // 1. First check development path (only on dev machine)
-        @"E:\Assist\Assist_Service\Assist_Service\bin\Debug\RulesConfig.json",
-        
-        // 2. Check application startup directory
-        Path.Combine(Application.StartupPath, "RulesConfig.json"),
-        
-        // 3. Check common application data directory
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "Assist",
-            "RulesConfig.json"
-        )
-    };
-
-            string configPath = null;
-
-            // Find the first existing config file
-            foreach (var path in possibleConfigPaths)
-            {
-                if (File.Exists(path))
-                {
-                    configPath = path;
-                    break;
-                }
-            }
-
-            if (configPath == null)
-            {
-                throw new FileNotFoundException(
-                    $"Config file not found at any of these locations:\n" +
-                    $"- {possibleConfigPaths[0]}\n" +
-                    $"- {possibleConfigPaths[1]}\n" +
-                    $"- {possibleConfigPaths[2]}"
-                );
-            }
-
-            // Load and parse the JSON
-            string json = File.ReadAllText(configPath);
-            _config = JsonConvert.DeserializeObject<List<NodeConfig>>(json);
-        }
-
         private void SetupTreeView()
         {
+            if (treeView2 == null)
+            {
+                Log("treeView2 is null in SetupTreeView");
+                return;
+            }
             treeView2.Nodes.Clear();
+
+            if (_config == null)
+            {
+                Log("_config is null in SetupTreeView");
+                return;
+            }
 
             foreach (var config in _config)
             {
@@ -820,45 +543,7 @@ namespace Assist_TSR.Forms
             treeView2.ExpandAll();
         }
 
-        private void StartListeningToAppStatusPipe()
-        {
-            Task.Run(() =>
-            {
-                while (true)
-                {
-                    using (NamedPipeServerStream pipeServer = new NamedPipeServerStream("AssistStatusPipe", PipeDirection.In))
-                    {
-                        pipeServer.WaitForConnection();
-
-                        using (StreamReader reader = new StreamReader(pipeServer))
-                        {
-                            string line;
-                            while ((line = reader.ReadLine()) != null)
-                            {
-                                string[] parts = line.Split(':');
-                                if (parts.Length == 3)
-                                {
-                                    string node = parts[0];
-                                    string app = parts[1];
-                                    string status = parts[2];
-
-                                    lock (_statuses)
-                                    {
-                                        var existing = _statuses.Find(s => s.NodeName == node && s.AppName == app);
-                                        if (existing != null)
-                                            existing.Status = status;
-                                        else
-                                            _statuses.Add(new AppStatus { NodeName = node, AppName = app, Status = status });
-                                    }
-
-                                    Invoke(new Action(UpdateTreeView));
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        //.....................................
 
         private void UpdateTreeView()
         {
@@ -873,10 +558,13 @@ namespace Assist_TSR.Forms
                         {
                             string appName = child.Nodes[i].Text.Split(':')[0].Trim();
 
-                            var status = _statuses.Find(s => s.NodeName == nodeName && s.AppName == appName);
-                            if (status != null)
+                            lock (_statusLock)
                             {
-                                child.Nodes[i].Text = $"{appName} : {status.Status}";
+                                var status = _statuses.Find(s => s.NodeName == nodeName && s.AppName == appName);
+                                if (status != null)
+                                {
+                                    child.Nodes[i].Text = $"{appName} : {status.Status}";
+                                }
                             }
                         }
                     }
@@ -885,26 +573,10 @@ namespace Assist_TSR.Forms
         }
 
         //Sending the GET_PEERS
-        private async Task<List<string>> GetPeersFromService()
+
+        private async void RefreshNetworkStatus()
         {
-            var peers = new List<string>();
-
-            using (var pipeClient = new NamedPipeClientStream(".", "AssistPeersPipe", PipeDirection.InOut))
-            {
-                await pipeClient.ConnectAsync();
-
-                using (var reader = new StreamReader(pipeClient))
-                using (var writer = new StreamWriter(pipeClient))
-                {
-                    // Send GET_PEERS request
-                    await writer.WriteLineAsync("GET_PEERS");
-                    await writer.FlushAsync();
-
-                    // Read the response
-                    string response = await reader.ReadLineAsync();
-                    peers = JsonConvert.DeserializeObject<List<string>>(response);
-                }
-            }
+            var peers = await peers_helper.GetPeersAsync();
 
             if (peers.Count > 1)
             {
@@ -916,8 +588,6 @@ namespace Assist_TSR.Forms
                 net_status.Text = "Disconnected";
                 net_status.ForeColor = System.Drawing.Color.Red;
             }
-
-            return peers;
         }
 
         // GetPeersFromService and updates the DataGridView with the received list of peers
@@ -925,7 +595,7 @@ namespace Assist_TSR.Forms
         {
             try
             {
-                var peers = await GetPeersFromService();
+                var peers = await peers_helper.GetPeersAsync();
 
                 // Use Invoke to update the DataGridView on the UI thread
                 dataGridView1.Invoke((MethodInvoker)delegate
@@ -960,19 +630,6 @@ namespace Assist_TSR.Forms
 
 
         // Periodically Using a Timer to Update Peers List 
-
-        private void InitializeTimer()
-        {
-            refreshTimer = new System.Windows.Forms.Timer();
-            refreshTimer.Interval = 5000; // Refresh every 5 seconds
-            refreshTimer.Tick += RefreshTimer_Tick;
-            refreshTimer.Start();
-        }
-
-        private async void RefreshTimer_Tick(object sender, EventArgs e)
-        {
-            await UpdateDataGridViewWithPeers();
-        }
 
         private void listView1_DoubleClick(object sender, EventArgs e)
         {
@@ -1102,11 +759,6 @@ namespace Assist_TSR.Forms
             MessageBox.Show("Reset successful!", "Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
-
         // UPDATE BUTTON
 
         private void update_Click(object sender, EventArgs e)
@@ -1142,10 +794,11 @@ namespace Assist_TSR.Forms
                 };
 
                 // Read existing rules from the file
-                List<Rule> existingRules = ReadExistingRules();
+                List<Rule> existingRules = read_rules.ReadExistingRules();
 
                 // Find and remove the existing rule for this source node (if it exists)
-                existingRules.RemoveAll(r => r.SourceNode == sourceNode);
+                //existingRules.RemoveAll(r => r.SourceNode == sourceNode);
+                existingRules.Clear();
 
                 // Add the new rule
                 existingRules.Add(newRule);
@@ -1164,54 +817,10 @@ namespace Assist_TSR.Forms
             }
         }
 
-        private List<Rule> ReadExistingRules()
-        {
-            string filePath = GetRulesConfigFilePath();
-
-            if (!File.Exists(filePath))
-            {
-                return new List<Rule>();
-            }
-
-            string json = File.ReadAllText(filePath);
-            return JsonConvert.DeserializeObject<List<Rule>>(json) ?? new List<Rule>();
-        }
-
-        private string GetRulesConfigFilePath()
-        {
-            // List of possible config file locations (order determines priority)
-            List<string> possibleConfigPaths = new List<string>
-    {
-        // 1. First check development path (only on dev machine)
-        @"E:\Assist\Assist_Service\Assist_Service\bin\Debug\RulesConfig.json",
-        
-        // 2. Check application startup directory
-        Path.Combine(Application.StartupPath, "RulesConfig.json"),
-        
-        // 3. Check common application data directory
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "Assist",
-            "RulesConfig.json"
-        )
-    };
-
-            // Return the first existing file path
-            foreach (string path in possibleConfigPaths)
-            {
-                if (File.Exists(path))
-                {
-                    return path;
-                }
-            }
-
-            // If none exist, return the most appropriate path (application startup directory)
-            return possibleConfigPaths[1];
-        }
 
         private void UpdateRulesConfigFile(string jsonContent)
         {
-            string filePath = GetRulesConfigFilePath();
+            string filePath = get_rules_path.GetRulesConfigFilePath();
 
             // Ensure the directory exists (especially important for CommonApplicationData path)
             string directory = Path.GetDirectoryName(filePath);
@@ -1547,7 +1156,7 @@ namespace Assist_TSR.Forms
         // STATUS_TAB
         private void UpdateServiceStatus()
         {
-            string serviceName = "Service1"; 
+            string serviceName = "Service1";
 
             try
             {
@@ -1569,99 +1178,13 @@ namespace Assist_TSR.Forms
 
         }
 
+        
+
         private void logUpdateTimer_Tick_1(object sender, EventArgs e)
         {
             UpdateServiceStatus();
         }
 
-    }
-
-   
-
-    public class Rule
-    {
-        public string SourceNode { get; set; }
-        public string TriggerApp { get; set; }
-        public List<TargetNode> TargetNodes { get; set; }
-    }
-
-    public class TargetNode
-    {
-        public string NodeName { get; set; }
-        public string LaunchApp { get; set; }
-        public string LaunchArguments { get; set; }
-    }
-
-    public class NodeConfig
-    {
-        public string NodeName { get; set; }
-        public string SourceNode { get; set; }
-        public string TriggerApp { get; set; }
-        public List<TargetNode> TargetNodes { get; set; }
-    }
-
-    public class AppStatus
-    {
-        public string NodeName { get; set; }
-        public string AppName { get; set; }
-        public string Status { get; set; }
-    }
-
-    public class RuleConfig
-    {
-        public string SourceNode { get; set; }
-        public string TriggerApp { get; set; }
-        public List<TargetNode> TargetNodes { get; set; }
-    }
-
-    
-
-    // Class For Thread-Safe File Operations
-    public static class FileHelper
-    {
-        private static readonly object _fileLock = new object();
-
-        public static void WriteJsonWithRetry(string path, object data, int retries = 3, int delay = 100)
-        {
-            for (int i = 0; i < retries; i++)
-            {
-                try
-                {
-                    lock (_fileLock)
-                    {
-                        string tempPath = path + ".tmp";
-                        string json = JsonConvert.SerializeObject(data, Formatting.Indented);
-                        File.WriteAllText(tempPath, json);
-                        File.Replace(tempPath, path, null);
-                    }
-                    return;
-                }
-                catch (IOException) when (i < retries - 1)
-                {
-                    Thread.Sleep(delay);
-                }
-            }
-        }
-
-        public static T ReadJsonWithRetry<T>(string path, int retries = 3, int delay = 100)
-        {
-            for (int i = 0; i < retries; i++)
-            {
-                try
-                {
-                    lock (_fileLock)
-                    {
-                        string json = File.ReadAllText(path);
-                        return JsonConvert.DeserializeObject<T>(json);
-                    }
-                }
-                catch (IOException) when (i < retries - 1)
-                {
-                    Thread.Sleep(delay);
-                }
-            }
-            return default;
-        }
     }
 
 }

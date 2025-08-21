@@ -163,7 +163,6 @@ namespace Assist_TSR.Forms
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(415, 29);
             this.panel1.TabIndex = 0;
-            this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.panel1_Paint);
             // 
             // notificationPanel
             // 
@@ -206,7 +205,6 @@ namespace Assist_TSR.Forms
             this.app_name.Size = new System.Drawing.Size(123, 15);
             this.app_name.TabIndex = 1;
             this.app_name.Text = "ASSIST CONSOLE";
-            this.app_name.Click += new System.EventHandler(this.label1_Click);
             // 
             // panel2
             // 
@@ -250,7 +248,6 @@ namespace Assist_TSR.Forms
             this.flowLayoutPanel3.Name = "flowLayoutPanel3";
             this.flowLayoutPanel3.Size = new System.Drawing.Size(396, 33);
             this.flowLayoutPanel3.TabIndex = 1;
-            this.flowLayoutPanel3.Paint += new System.Windows.Forms.PaintEventHandler(this.flowLayoutPanel3_Paint);
             // 
             // settings
             // 
@@ -274,7 +271,6 @@ namespace Assist_TSR.Forms
             this.panel4.Name = "panel4";
             this.panel4.Size = new System.Drawing.Size(298, 1);
             this.panel4.TabIndex = 2;
-            this.panel4.Paint += new System.Windows.Forms.PaintEventHandler(this.panel4_Paint);
             // 
             // panel5
             // 
@@ -386,7 +382,6 @@ namespace Assist_TSR.Forms
             this.node_name_set.Size = new System.Drawing.Size(60, 13);
             this.node_name_set.TabIndex = 1;
             this.node_name_set.Text = "Set Name: ";
-            this.node_name_set.Click += new System.EventHandler(this.label2_Click);
             // 
             // flowLayoutPanel2
             // 
@@ -470,7 +465,6 @@ namespace Assist_TSR.Forms
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Size = new System.Drawing.Size(390, 44);
             this.flowLayoutPanel1.TabIndex = 0;
-            this.flowLayoutPanel1.Paint += new System.Windows.Forms.PaintEventHandler(this.flowLayoutPanel1_Paint);
             // 
             // label1
             // 
@@ -636,7 +630,6 @@ namespace Assist_TSR.Forms
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.Size = new System.Drawing.Size(324, 86);
             this.dataGridView1.TabIndex = 2;
-            this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick);
             // 
             // triggering_node
             // 

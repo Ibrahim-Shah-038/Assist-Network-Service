@@ -21,5 +21,6 @@ namespace Assist_Service.Models
         /// Application to launch on the target node
         /// </summary>
         public string LaunchApp { get; set; }
+        public string LaunchArguments { get; set; }
     }
 }
