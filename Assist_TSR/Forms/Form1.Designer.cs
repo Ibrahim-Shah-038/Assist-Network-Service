@@ -134,7 +134,20 @@ namespace Assist_TSR.Forms
             this.flowLayoutPanel4 = new System.Windows.Forms.FlowLayoutPanel();
             this.logs = new System.Windows.Forms.Label();
             this.btnRefresh = new System.Windows.Forms.Button();
+            this.Power_Management = new System.Windows.Forms.TabPage();
+            this.panel11 = new System.Windows.Forms.Panel();
+            this.panel13 = new System.Windows.Forms.Panel();
+            this.offline_nodes = new System.Windows.Forms.Label();
+            this.panel10 = new System.Windows.Forms.Panel();
+            this.select_all = new System.Windows.Forms.RadioButton();
+            this.panel9 = new System.Windows.Forms.Panel();
+            this.panel12 = new System.Windows.Forms.Panel();
+            this.online_nodes = new System.Windows.Forms.Label();
             this.logUpdateTimer = new System.Windows.Forms.Timer(this.components);
+            this.select_all_2 = new System.Windows.Forms.RadioButton();
+            this.power_up = new System.Windows.Forms.Button();
+            this.sleep = new System.Windows.Forms.Button();
+            this.shutdown = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.notificationPanel.SuspendLayout();
             this.panel2.SuspendLayout();
@@ -152,6 +165,10 @@ namespace Assist_TSR.Forms
             this.status_tab.SuspendLayout();
             this.log_tab.SuspendLayout();
             this.flowLayoutPanel4.SuspendLayout();
+            this.Power_Management.SuspendLayout();
+            this.panel11.SuspendLayout();
+            this.panel10.SuspendLayout();
+            this.panel9.SuspendLayout();
             this.SuspendLayout();
             // 
             // panel1
@@ -221,6 +238,7 @@ namespace Assist_TSR.Forms
             this.tabControl1.Controls.Add(this.config_tab);
             this.tabControl1.Controls.Add(this.status_tab);
             this.tabControl1.Controls.Add(this.log_tab);
+            this.tabControl1.Controls.Add(this.Power_Management);
             this.tabControl1.Location = new System.Drawing.Point(6, 0);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
@@ -814,9 +832,147 @@ namespace Assist_TSR.Forms
             this.btnRefresh.UseVisualStyleBackColor = true;
             this.btnRefresh.Click += new System.EventHandler(this.button1_Click);
             // 
+            // Power_Management
+            // 
+            this.Power_Management.Controls.Add(this.panel11);
+            this.Power_Management.Controls.Add(this.panel10);
+            this.Power_Management.Location = new System.Drawing.Point(4, 22);
+            this.Power_Management.Name = "Power_Management";
+            this.Power_Management.Padding = new System.Windows.Forms.Padding(3);
+            this.Power_Management.Size = new System.Drawing.Size(396, 388);
+            this.Power_Management.TabIndex = 4;
+            this.Power_Management.Text = "Power Management";
+            this.Power_Management.UseVisualStyleBackColor = true;
+            // 
+            // panel11
+            // 
+            this.panel11.Controls.Add(this.power_up);
+            this.panel11.Controls.Add(this.select_all_2);
+            this.panel11.Controls.Add(this.panel13);
+            this.panel11.Controls.Add(this.offline_nodes);
+            this.panel11.Location = new System.Drawing.Point(0, 188);
+            this.panel11.Name = "panel11";
+            this.panel11.Size = new System.Drawing.Size(396, 204);
+            this.panel11.TabIndex = 5;
+            // 
+            // panel13
+            // 
+            this.panel13.BackColor = System.Drawing.Color.Black;
+            this.panel13.Location = new System.Drawing.Point(94, 15);
+            this.panel13.Name = "panel13";
+            this.panel13.Size = new System.Drawing.Size(253, 1);
+            this.panel13.TabIndex = 6;
+            // 
+            // offline_nodes
+            // 
+            this.offline_nodes.AutoSize = true;
+            this.offline_nodes.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.offline_nodes.Location = new System.Drawing.Point(6, 6);
+            this.offline_nodes.Name = "offline_nodes";
+            this.offline_nodes.Size = new System.Drawing.Size(81, 15);
+            this.offline_nodes.TabIndex = 6;
+            this.offline_nodes.Text = "Offline Nodes";
+            // 
+            // panel10
+            // 
+            this.panel10.Controls.Add(this.shutdown);
+            this.panel10.Controls.Add(this.sleep);
+            this.panel10.Controls.Add(this.select_all);
+            this.panel10.Controls.Add(this.panel9);
+            this.panel10.Controls.Add(this.online_nodes);
+            this.panel10.Location = new System.Drawing.Point(0, 0);
+            this.panel10.Name = "panel10";
+            this.panel10.Size = new System.Drawing.Size(396, 191);
+            this.panel10.TabIndex = 4;
+            // 
+            // select_all
+            // 
+            this.select_all.AutoSize = true;
+            this.select_all.Location = new System.Drawing.Point(9, 30);
+            this.select_all.Name = "select_all";
+            this.select_all.Size = new System.Drawing.Size(36, 17);
+            this.select_all.TabIndex = 6;
+            this.select_all.TabStop = true;
+            this.select_all.Text = "All";
+            this.select_all.UseVisualStyleBackColor = true;
+            // 
+            // panel9
+            // 
+            this.panel9.BackColor = System.Drawing.Color.Black;
+            this.panel9.Controls.Add(this.panel12);
+            this.panel9.Location = new System.Drawing.Point(94, 12);
+            this.panel9.Name = "panel9";
+            this.panel9.Size = new System.Drawing.Size(253, 1);
+            this.panel9.TabIndex = 5;
+            // 
+            // panel12
+            // 
+            this.panel12.BackColor = System.Drawing.Color.Black;
+            this.panel12.Location = new System.Drawing.Point(0, 0);
+            this.panel12.Name = "panel12";
+            this.panel12.Size = new System.Drawing.Size(253, 1);
+            this.panel12.TabIndex = 6;
+            // 
+            // online_nodes
+            // 
+            this.online_nodes.AutoSize = true;
+            this.online_nodes.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.online_nodes.Location = new System.Drawing.Point(6, 3);
+            this.online_nodes.Name = "online_nodes";
+            this.online_nodes.Size = new System.Drawing.Size(82, 15);
+            this.online_nodes.TabIndex = 4;
+            this.online_nodes.Text = "Online Nodes";
+            // 
             // logUpdateTimer
             // 
             this.logUpdateTimer.Tick += new System.EventHandler(this.logUpdateTimer_Tick_1);
+            // 
+            // select_all_2
+            // 
+            this.select_all_2.AutoSize = true;
+            this.select_all_2.Location = new System.Drawing.Point(9, 33);
+            this.select_all_2.Name = "select_all_2";
+            this.select_all_2.Size = new System.Drawing.Size(36, 17);
+            this.select_all_2.TabIndex = 7;
+            this.select_all_2.TabStop = true;
+            this.select_all_2.Text = "All";
+            this.select_all_2.UseVisualStyleBackColor = true;
+            // 
+            // power_up
+            // 
+            this.power_up.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(167)))), ((int)(((byte)(69)))));
+            this.power_up.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.power_up.ForeColor = System.Drawing.Color.White;
+            this.power_up.Location = new System.Drawing.Point(301, 27);
+            this.power_up.Name = "power_up";
+            this.power_up.Size = new System.Drawing.Size(75, 23);
+            this.power_up.TabIndex = 8;
+            this.power_up.Text = "Power Up";
+            this.power_up.UseVisualStyleBackColor = false;
+            // 
+            // sleep
+            // 
+            this.sleep.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(193)))), ((int)(((byte)(7)))));
+            this.sleep.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.sleep.ForeColor = System.Drawing.Color.Black;
+            this.sleep.Location = new System.Drawing.Point(220, 27);
+            this.sleep.Name = "sleep";
+            this.sleep.Size = new System.Drawing.Size(75, 23);
+            this.sleep.TabIndex = 7;
+            this.sleep.Text = "Sleep";
+            this.sleep.UseVisualStyleBackColor = false;
+            // 
+            // shutdown
+            // 
+            this.shutdown.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(53)))), ((int)(((byte)(69)))));
+            this.shutdown.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.shutdown.ForeColor = System.Drawing.SystemColors.Window;
+            this.shutdown.Location = new System.Drawing.Point(301, 27);
+            this.shutdown.Name = "shutdown";
+            this.shutdown.Size = new System.Drawing.Size(75, 23);
+            this.shutdown.TabIndex = 8;
+            this.shutdown.Text = "Shut Down";
+            this.shutdown.UseVisualStyleBackColor = false;
             // 
             // Form1
             // 
@@ -858,6 +1014,12 @@ namespace Assist_TSR.Forms
             this.log_tab.ResumeLayout(false);
             this.flowLayoutPanel4.ResumeLayout(false);
             this.flowLayoutPanel4.PerformLayout();
+            this.Power_Management.ResumeLayout(false);
+            this.panel11.ResumeLayout(false);
+            this.panel11.PerformLayout();
+            this.panel10.ResumeLayout(false);
+            this.panel10.PerformLayout();
+            this.panel9.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -929,6 +1091,19 @@ namespace Assist_TSR.Forms
         private System.Windows.Forms.Button closeNotificationButton;
         private System.Windows.Forms.Label notificationLabel;
         private System.Windows.Forms.Button preset_btn;
+        private System.Windows.Forms.TabPage Power_Management;
+        private System.Windows.Forms.Panel panel10;
+        private System.Windows.Forms.Label online_nodes;
+        private System.Windows.Forms.Panel panel9;
+        private System.Windows.Forms.Panel panel11;
+        private System.Windows.Forms.Label offline_nodes;
+        private System.Windows.Forms.Panel panel13;
+        private System.Windows.Forms.Panel panel12;
+        private System.Windows.Forms.RadioButton select_all;
+        private System.Windows.Forms.Button power_up;
+        private System.Windows.Forms.RadioButton select_all_2;
+        private System.Windows.Forms.Button shutdown;
+        private System.Windows.Forms.Button sleep;
     }
 }
 

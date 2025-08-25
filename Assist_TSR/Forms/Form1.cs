@@ -1178,8 +1178,6 @@ namespace Assist_TSR.Forms
 
         }
 
-        
-
         private void logUpdateTimer_Tick_1(object sender, EventArgs e)
         {
             UpdateServiceStatus();
