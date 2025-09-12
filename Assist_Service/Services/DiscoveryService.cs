@@ -113,6 +113,7 @@ namespace Assist_Service.Services
                             if (parts.Length >= 3 && SecurityHelper.ValidateToken(DiscoveryMessage, token))
                             {
                                 UpdatePeer(peerName, remoteEP, macAddress);
+                                UpdatePeerAndPersist(peerName, remoteEP, macAddress);
                                 SendAcknowledgment(peerName, remoteEP);
                             }
                             break;
@@ -121,6 +122,7 @@ namespace Assist_Service.Services
                             if (parts.Length >= 3 && SecurityHelper.ValidateToken(AcknowledgeMessage, token))
                             {
                                 UpdatePeer(peerName, remoteEP, macAddress);
+                                UpdatePeerAndPersist(peerName, remoteEP, macAddress);
                             }
                             break;
 
@@ -139,7 +141,7 @@ namespace Assist_Service.Services
             }
         }
 
-        private void UpdatePeer(string peerName, IPEndPoint endpoint, string macAddress)
+        private Peer UpdatePeer(string peerName, IPEndPoint endpoint, string macAddress)
         {
             lock (_peersLock)
             {
@@ -154,22 +156,35 @@ namespace Assist_Service.Services
                     existingPeer.LastSeen = DateTime.UtcNow;
                     existingPeer.MissedHeartbeats = 0;
                     existingPeer.LeftGracefully = false;
+                    existingPeer.Status = "Online";
+
+                    return existingPeer;
                 }
                 else
                 {
-                    _peers.Add(new Peer
+                    var newPeer = new Peer
                     {
                         NodeName = peerName,
                         EndPoint = endpoint,
                         MacAddress = macAddress,
                         Status = "Online",
                         LastSeen = DateTime.UtcNow
-                    });
+                    };
+
+                    _peers.Add(newPeer);
 
                     Logger.Log($"[UpdatePeer] New peer discovered: {peerName} @ {endpoint} (MAC: {macAddress})");
-                    PeerFileStorage.SavePeersToJson(_peers);
+
+                    return newPeer;
                 }
             }
+        }
+
+        // Extended version: updates in-memory + persists
+        private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string macAddress)
+        {
+            var peer = UpdatePeer(peerName, endpoint, macAddress);
+            PeerFileStorage.UpdateAndSavePeer(peer);
         }
 
         private void SendAcknowledgment(string peerName, IPEndPoint remoteEP)
