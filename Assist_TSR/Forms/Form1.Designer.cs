@@ -136,18 +136,18 @@ namespace Assist_TSR.Forms
             this.btnRefresh = new System.Windows.Forms.Button();
             this.Power_Management = new System.Windows.Forms.TabPage();
             this.panel11 = new System.Windows.Forms.Panel();
+            this.power_up = new System.Windows.Forms.Button();
+            this.select_all_2 = new System.Windows.Forms.RadioButton();
             this.panel13 = new System.Windows.Forms.Panel();
             this.offline_nodes = new System.Windows.Forms.Label();
             this.panel10 = new System.Windows.Forms.Panel();
+            this.shutdown = new System.Windows.Forms.Button();
+            this.sleep = new System.Windows.Forms.Button();
             this.select_all = new System.Windows.Forms.RadioButton();
             this.panel9 = new System.Windows.Forms.Panel();
             this.panel12 = new System.Windows.Forms.Panel();
             this.online_nodes = new System.Windows.Forms.Label();
             this.logUpdateTimer = new System.Windows.Forms.Timer(this.components);
-            this.select_all_2 = new System.Windows.Forms.RadioButton();
-            this.power_up = new System.Windows.Forms.Button();
-            this.sleep = new System.Windows.Forms.Button();
-            this.shutdown = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.notificationPanel.SuspendLayout();
             this.panel2.SuspendLayout();
@@ -855,6 +855,29 @@ namespace Assist_TSR.Forms
             this.panel11.Size = new System.Drawing.Size(396, 204);
             this.panel11.TabIndex = 5;
             // 
+            // power_up
+            // 
+            this.power_up.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(167)))), ((int)(((byte)(69)))));
+            this.power_up.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.power_up.ForeColor = System.Drawing.Color.White;
+            this.power_up.Location = new System.Drawing.Point(301, 27);
+            this.power_up.Name = "power_up";
+            this.power_up.Size = new System.Drawing.Size(75, 23);
+            this.power_up.TabIndex = 8;
+            this.power_up.Text = "Power Up";
+            this.power_up.UseVisualStyleBackColor = false;
+            // 
+            // select_all_2
+            // 
+            this.select_all_2.AutoSize = true;
+            this.select_all_2.Location = new System.Drawing.Point(9, 33);
+            this.select_all_2.Name = "select_all_2";
+            this.select_all_2.Size = new System.Drawing.Size(36, 17);
+            this.select_all_2.TabIndex = 7;
+            this.select_all_2.TabStop = true;
+            this.select_all_2.Text = "All";
+            this.select_all_2.UseVisualStyleBackColor = true;
+            // 
             // panel13
             // 
             this.panel13.BackColor = System.Drawing.Color.Black;
@@ -875,6 +898,7 @@ namespace Assist_TSR.Forms
             // 
             // panel10
             // 
+            this.panel10.AutoScroll = true;
             this.panel10.Controls.Add(this.shutdown);
             this.panel10.Controls.Add(this.sleep);
             this.panel10.Controls.Add(this.select_all);
@@ -884,6 +908,31 @@ namespace Assist_TSR.Forms
             this.panel10.Name = "panel10";
             this.panel10.Size = new System.Drawing.Size(396, 191);
             this.panel10.TabIndex = 4;
+            this.panel10.Paint += new System.Windows.Forms.PaintEventHandler(this.panel10_Paint);
+            // 
+            // shutdown
+            // 
+            this.shutdown.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(53)))), ((int)(((byte)(69)))));
+            this.shutdown.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.shutdown.ForeColor = System.Drawing.SystemColors.Window;
+            this.shutdown.Location = new System.Drawing.Point(301, 27);
+            this.shutdown.Name = "shutdown";
+            this.shutdown.Size = new System.Drawing.Size(75, 23);
+            this.shutdown.TabIndex = 8;
+            this.shutdown.Text = "Shut Down";
+            this.shutdown.UseVisualStyleBackColor = false;
+            // 
+            // sleep
+            // 
+            this.sleep.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(193)))), ((int)(((byte)(7)))));
+            this.sleep.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.sleep.ForeColor = System.Drawing.Color.Black;
+            this.sleep.Location = new System.Drawing.Point(220, 27);
+            this.sleep.Name = "sleep";
+            this.sleep.Size = new System.Drawing.Size(75, 23);
+            this.sleep.TabIndex = 7;
+            this.sleep.Text = "Sleep";
+            this.sleep.UseVisualStyleBackColor = false;
             // 
             // select_all
             // 
@@ -926,53 +975,6 @@ namespace Assist_TSR.Forms
             // logUpdateTimer
             // 
             this.logUpdateTimer.Tick += new System.EventHandler(this.logUpdateTimer_Tick_1);
-            // 
-            // select_all_2
-            // 
-            this.select_all_2.AutoSize = true;
-            this.select_all_2.Location = new System.Drawing.Point(9, 33);
-            this.select_all_2.Name = "select_all_2";
-            this.select_all_2.Size = new System.Drawing.Size(36, 17);
-            this.select_all_2.TabIndex = 7;
-            this.select_all_2.TabStop = true;
-            this.select_all_2.Text = "All";
-            this.select_all_2.UseVisualStyleBackColor = true;
-            // 
-            // power_up
-            // 
-            this.power_up.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(167)))), ((int)(((byte)(69)))));
-            this.power_up.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.power_up.ForeColor = System.Drawing.Color.White;
-            this.power_up.Location = new System.Drawing.Point(301, 27);
-            this.power_up.Name = "power_up";
-            this.power_up.Size = new System.Drawing.Size(75, 23);
-            this.power_up.TabIndex = 8;
-            this.power_up.Text = "Power Up";
-            this.power_up.UseVisualStyleBackColor = false;
-            // 
-            // sleep
-            // 
-            this.sleep.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(193)))), ((int)(((byte)(7)))));
-            this.sleep.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.sleep.ForeColor = System.Drawing.Color.Black;
-            this.sleep.Location = new System.Drawing.Point(220, 27);
-            this.sleep.Name = "sleep";
-            this.sleep.Size = new System.Drawing.Size(75, 23);
-            this.sleep.TabIndex = 7;
-            this.sleep.Text = "Sleep";
-            this.sleep.UseVisualStyleBackColor = false;
-            // 
-            // shutdown
-            // 
-            this.shutdown.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(53)))), ((int)(((byte)(69)))));
-            this.shutdown.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.shutdown.ForeColor = System.Drawing.SystemColors.Window;
-            this.shutdown.Location = new System.Drawing.Point(301, 27);
-            this.shutdown.Name = "shutdown";
-            this.shutdown.Size = new System.Drawing.Size(75, 23);
-            this.shutdown.TabIndex = 8;
-            this.shutdown.Text = "Shut Down";
-            this.shutdown.UseVisualStyleBackColor = false;
             // 
             // Form1
             // 

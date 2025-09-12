@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Mail;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -68,12 +69,13 @@ namespace Assist_Service.Services
 
         private void DiscoverPeers()
         {
+            string macAddress = NetworkHelper.GetMacAddress();
             while (_isRunning)
             {
                 try
                 {
                     string token = SecurityHelper.GenerateToken(DiscoveryMessage);
-                    string message = $"{DiscoveryMessage}:{_nodeConfig.NodeName}:{token}";
+                    string message = $"{DiscoveryMessage}:{_nodeConfig.NodeName}:{macAddress}:{token}";
                     byte[] bytes = Encoding.UTF8.GetBytes(message);
                     _udpClient.Send(bytes, bytes.Length, new IPEndPoint(MulticastAddress, BroadcastPort));
 
@@ -98,18 +100,19 @@ namespace Assist_Service.Services
                     Logger.Log($"Received message from {remoteEP}: {message}");
 
                     string[] parts = message.Split(':');
-                    if (parts.Length < 2) continue;
+                    if (parts.Length < 4) continue;
 
                     string messageType = parts[0];
-                    string token = parts[parts.Length - 1];
                     string peerName = parts[1];
+                    string macAddress = parts[2];
+                    string token = parts[3];
 
                     switch (messageType)
                     {
                         case DiscoveryMessage:
                             if (parts.Length >= 3 && SecurityHelper.ValidateToken(DiscoveryMessage, token))
                             {
-                                UpdatePeer(peerName, remoteEP);
+                                UpdatePeer(peerName, remoteEP, macAddress);
                                 SendAcknowledgment(peerName, remoteEP);
                             }
                             break;
@@ -117,7 +120,7 @@ namespace Assist_Service.Services
                         case AcknowledgeMessage:
                             if (parts.Length >= 3 && SecurityHelper.ValidateToken(AcknowledgeMessage, token))
                             {
-                                UpdatePeer(peerName, remoteEP);
+                                UpdatePeer(peerName, remoteEP, macAddress);
                             }
                             break;
 
@@ -136,7 +139,7 @@ namespace Assist_Service.Services
             }
         }
 
-        private void UpdatePeer(string peerName, IPEndPoint endpoint)
+        private void UpdatePeer(string peerName, IPEndPoint endpoint, string macAddress)
         {
             lock (_peersLock)
             {
@@ -147,6 +150,7 @@ namespace Assist_Service.Services
                 if (existingPeer != null)
                 {
                     existingPeer.NodeName = peerName;
+                    existingPeer.MacAddress = macAddress;
                     existingPeer.LastSeen = DateTime.UtcNow;
                     existingPeer.MissedHeartbeats = 0;
                     existingPeer.LeftGracefully = false;
@@ -157,10 +161,13 @@ namespace Assist_Service.Services
                     {
                         NodeName = peerName,
                         EndPoint = endpoint,
+                        MacAddress = macAddress,
+                        Status = "Online",
                         LastSeen = DateTime.UtcNow
                     });
 
-                    Logger.Log($"[UpdatePeer] New peer discovered: {peerName} @ {endpoint}");
+                    Logger.Log($"[UpdatePeer] New peer discovered: {peerName} @ {endpoint} (MAC: {macAddress})");
+                    PeerFileStorage.SavePeersToJson(_peers);
                 }
             }
         }

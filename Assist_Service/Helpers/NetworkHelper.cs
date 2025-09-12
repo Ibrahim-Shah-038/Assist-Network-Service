@@ -7,6 +7,7 @@
 
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
 namespace Assist_Service.Helpers
@@ -31,6 +32,20 @@ namespace Assist_Service.Helpers
             {
                 return IPAddress.Loopback;
             }
+        }
+
+        // GET MAC ADDRESS
+
+        public static string GetMacAddress()
+        {
+            var interfaces = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(nic =>
+                    nic.OperationalStatus == OperationalStatus.Up &&
+                    nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .ToList();
+
+            var primaryInterface = interfaces.FirstOrDefault();
+            return primaryInterface?.GetPhysicalAddress()?.ToString() ?? "UNKNOWN";
         }
     }
 }

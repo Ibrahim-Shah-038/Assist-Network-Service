@@ -119,6 +119,7 @@
     <Compile Include="IPC_Handler\Get_Rules_Path.cs" />
     <Compile Include="IPC_Handler\Listen_App_Status.cs" />
     <Compile Include="IPC_Handler\Notifying_Service.cs" />
+    <Compile Include="IPC_Handler\Power_Management.cs" />
     <Compile Include="IPC_Handler\Request_Data.cs" />
     <Compile Include="IPC_Handler\Send_Path.cs" />
     <Compile Include="IPC_Handler\Server.cs" />
@@ -188,6 +189,15 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\pc_icon1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Assist_Service\Assist_Service.csproj">
+      <Project>{a05cc1ff-8ad0-48aa-aca9-6d9a6d052abb}</Project>
+      <Name>Assist_Service</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -86,6 +86,7 @@
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\Logging.cs" />
     <Compile Include="Helpers\NetworkHelper.cs" />
+    <Compile Include="Helpers\PeerFileStorage.cs" />
     <Compile Include="Helpers\SecurityHelper.cs" />
     <Compile Include="Helpers\Test_Log.cs" />
     <Compile Include="Models\NodeConfig.cs" />

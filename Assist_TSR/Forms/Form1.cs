@@ -23,6 +23,8 @@ using Assist_TSR.IPC_Handler;
 using Assist_TSR.Utilities;
 using Assist_TSR.Event_Handler;
 using Assist_TSR.Classes;
+using Assist_Service.IPC_Handler;
+
 
 
 namespace Assist_TSR.Forms
@@ -70,7 +72,11 @@ namespace Assist_TSR.Forms
         Rule_Class myRule;
         //Listen_App_Status _listenAppStatus;
 
+        // Power Management
 
+        private System.Threading.Timer statusRefreshTimer;
+        private readonly Power_Management powerManager;
+        private readonly System.Windows.Forms.ToolTip toolTip;
 
         public Form1()
         {
@@ -152,6 +158,14 @@ namespace Assist_TSR.Forms
                 listView1.Scrollable = true;
                 btnReset.Click += btnReset_Click;
                 Log("Event handlers attached");
+
+
+                // Power Management 
+
+                powerManager = new Power_Management();
+                powerManager.OnPeersUpdated += PowerManager_OnPeersUpdated;
+
+                toolTip = new System.Windows.Forms.ToolTip();
 
                 Log("Constructor End");
             }
@@ -1174,6 +1188,183 @@ namespace Assist_TSR.Forms
         }
 
         private void panel3_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        // POWER MANAGEMENT
+
+        private void PowerManager_OnPeersUpdated(List<Assist_Service.Models.Peer> peers)
+        {
+            // Ensure UI updates on main thread
+            if (panel10.InvokeRequired)
+            {
+                panel10.Invoke(new Action(() => DisplayOnlineNodes(peers)));
+            }
+            else
+            {
+                DisplayOnlineNodes(peers);
+            }
+
+            // Update Offline Nodes
+            if (panel11.InvokeRequired)
+            {
+                panel11.Invoke(new Action(() => DisplayOfflineNodes(peers)));
+            }
+            else
+            {
+                DisplayOfflineNodes(peers);
+            }
+        }
+
+        private void DisplayOnlineNodes(List<Assist_Service.Models.Peer> peers)
+        {
+            // Clear old icons but don't remove the label/buttons
+            foreach (Control ctrl in panel10.Controls.OfType<PictureBox>().ToList())
+            {
+                panel10.Controls.Remove(ctrl);
+                ctrl.Dispose();
+            }
+
+            int startY = 60; // leave space below the "Online Nodes" label + buttons
+            int x = 10;
+            int y = startY;
+
+            int iconSize = 40;
+            int margin = 10;
+            int maxPerRow = (panel10.Width - 20) / (iconSize + margin);
+
+            int count = 0;
+
+            foreach (var peer in peers.Where(p => p.Status == "Online"))
+            {
+                PictureBox pcIcon = new PictureBox
+                {
+                    Width = iconSize,
+                    Height = iconSize,
+                    Image = Properties.Resources.pc_icon1, // your PC icon
+                    SizeMode = PictureBoxSizeMode.StretchImage,
+                    Location = new Point(x, y),
+                    Cursor = Cursors.Hand,
+                    Tag = peer.NodeName
+                };
+
+                Label nameLabel = new Label
+                {
+                    Text = peer.NodeName,
+                    AutoSize = true,
+                    TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+                };
+
+                nameLabel.Location = new Point(
+                pcIcon.Left + (pcIcon.Width - nameLabel.PreferredWidth) / 2,
+                pcIcon.Bottom + 5
+                );
+
+                // Tooltip on hover
+                System.Windows.Forms.ToolTip tooltip = new System.Windows.Forms.ToolTip();
+                tooltip.SetToolTip(pcIcon, $"Node: {peer.NodeName}\n" +
+                    //$"IP: {peer.EndPoint?.Address}\n" +
+                    //$"Port: {peer.EndPoint?.Port}\n" +
+                    $"MAC: {peer.MacAddress}\n" +
+                    $"Status: {peer.Status}\n" +
+                    //$"Last Seen: {peer.LastSeen}\n" +
+                    //$"Missed Heartbeats: {peer.MissedHeartbeats}\n" +
+                    $"Graceful Exit: {peer.LeftGracefully}");
+
+                // Add to panel
+                panel10.Controls.Add(pcIcon);
+                panel10.Controls.Add(nameLabel);
+                pcIcon.BringToFront();
+                nameLabel.BringToFront();
+
+                count++;
+                if (count % maxPerRow == 0)
+                {
+                    x = 10;
+                    y += iconSize + margin;
+                }
+                else
+                {
+                    x += iconSize + margin;
+                }
+            }
+        }
+
+        // Display Offline nodes
+        private void DisplayOfflineNodes(List<Assist_Service.Models.Peer> peers)
+        {
+            // Clear old icons but don't remove the label/buttons
+            foreach (Control ctrl in panel11.Controls.OfType<PictureBox>().ToList())
+            {
+                panel11.Controls.Remove(ctrl);
+                ctrl.Dispose();
+            }
+
+            int startY = 60; // leave space below the "Offline Nodes" label + buttons
+            int x = 10;
+            int y = startY;
+
+            int iconSize = 40;
+            int margin = 10;
+            int maxPerRow = (panel11.Width - 20) / (iconSize + margin);
+
+            int count = 0;
+
+            foreach (var peer in peers.Where(p => p.Status == "Offline"))
+            {
+                PictureBox pcIcon = new PictureBox
+                {
+                    Width = iconSize,
+                    Height = iconSize,
+                    Image = Properties.Resources.pc_icon1, // add a different icon for offline PCs
+                    SizeMode = PictureBoxSizeMode.StretchImage,
+                    Location = new Point(x, y),
+                    Cursor = Cursors.Hand,
+                    Tag = peer.NodeName
+                };
+
+                Label nameLabel = new Label
+                {
+                    Text = peer.NodeName,
+                    AutoSize = true,
+                    TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+                };
+
+                nameLabel.Location = new Point(
+                    pcIcon.Left + (pcIcon.Width - nameLabel.PreferredWidth) / 2,
+                    pcIcon.Bottom + 5
+                );
+
+                // Tooltip on hover
+                System.Windows.Forms.ToolTip tooltip = new System.Windows.Forms.ToolTip();
+                tooltip.SetToolTip(pcIcon, $"Node: {peer.NodeName}\n" +
+                    $"MAC: {peer.MacAddress}\n" +
+                    $"Status: {peer.Status}\n" +
+                    $"Graceful Exit: {peer.LeftGracefully}");
+
+                // Add to panel11
+                panel11.Controls.Add(pcIcon);
+                panel11.Controls.Add(nameLabel);
+                pcIcon.BringToFront();
+                nameLabel.BringToFront();
+
+                count++;
+                if (count % maxPerRow == 0)
+                {
+                    x = 10;
+                    y += iconSize + margin;
+                }
+                else
+                {
+                    x += iconSize + margin;
+                }
+            }
+        }
+
+
+
+        private void panel10_Paint(object sender, PaintEventArgs e)
         {
 
         }
