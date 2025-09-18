@@ -84,9 +84,11 @@
   <ItemGroup>
     <Compile Include="Helpers\Closure_Log.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
+    <Compile Include="Helpers\IPtoStringConverter.cs" />
     <Compile Include="Helpers\Logging.cs" />
     <Compile Include="Helpers\NetworkHelper.cs" />
     <Compile Include="Helpers\PeerFileStorage.cs" />
+    <Compile Include="Helpers\Remote_Power_Log.cs" />
     <Compile Include="Helpers\SecurityHelper.cs" />
     <Compile Include="Helpers\Test_Log.cs" />
     <Compile Include="Models\NodeConfig.cs" />
@@ -116,6 +118,7 @@
     <Compile Include="Services\ApplicationMonitorService.cs" />
     <Compile Include="Services\DiscoveryService.cs" />
     <Compile Include="Services\PipeCommunicationService.cs" />
+    <Compile Include="Services\Remote_Power_Management_Service.cs" />
     <Compile Include="Services\RuleProcessingService.cs" />
   </ItemGroup>
   <ItemGroup>

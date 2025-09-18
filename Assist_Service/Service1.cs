@@ -31,10 +31,12 @@ namespace Assist_Service
         private ApplicationClosureService _appClosureService;
         private Logging Logger = new Logging();
         private Test_Log Log = new Test_Log();
+        private Remote_Power_Log PWR_Log = new Remote_Power_Log();
         private System.Timers.Timer _monitoredAppsRefreshTimer;
         private List<string> _monitoredApplications = new List<string>();
         private Thread _AppClosureListenerThread;
         private readonly object _runningAppsLock = new object();
+        private Remote_Power_Management_Service _remotePowerService;
 
 
         public Service1()
@@ -44,6 +46,7 @@ namespace Assist_Service
 
         protected override void OnStart(string[] args)
         {
+            if (_isRunning) return;
             _isRunning = true;
             Logger.Log("Service is starting...");
 
@@ -130,6 +133,12 @@ namespace Assist_Service
                 monitor_Closure_Thread.Start();
                 _AppClosureListenerThread.Start();
                 Logger.Log("All services started successfully.");
+
+                // Remote Power Management
+
+                _remotePowerService = new Remote_Power_Management_Service();
+                _remotePowerService.Start();
+                Logger.Log("Remote Power Management Service started.");
             }
             catch (Exception ex)
             {
@@ -151,6 +160,20 @@ namespace Assist_Service
             _udpClient?.Close();
             _monitoredAppsRefreshTimer?.Stop();
             _monitoredAppsRefreshTimer?.Dispose();
+
+            try
+            {
+                if (_remotePowerService != null)
+                {
+                    _remotePowerService.Stop();    // tell it to stop
+                    _remotePowerService = null;    // release reference
+                    Logger.Log("Remote Power Management Service stopped.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Failed to stop Remote Power Management Service: {ex.Message}");
+            }
         }
 
         private List<string> GetMonitoredApps()

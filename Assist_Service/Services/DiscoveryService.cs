@@ -27,6 +27,9 @@ namespace Assist_Service.Services
 
         private readonly Logging Logger = new Logging();
 
+        string macAddress = NetworkHelper.GetMacAddress();
+        string ipv4 = NetworkHelper.GetLocalIPv4(); // helper method you’ll add
+
         public DiscoveryService(UdpClient udpClient, NodeConfig nodeConfig, List<Peer> peers, object peersLock)
         {
             _udpClient = udpClient;
@@ -54,7 +57,7 @@ namespace Assist_Service.Services
             try
             {
                 string token = SecurityHelper.GenerateToken(LeaveMessage);
-                string message = $"{LeaveMessage}:{_nodeConfig.NodeName}:{token}";
+                string message = $"{LeaveMessage}:{_nodeConfig.NodeName}:{ipv4}:{token}";
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 _udpClient.Send(bytes, bytes.Length, new IPEndPoint(MulticastAddress, BroadcastPort));
                 Logger.Log($"Sent LEAVE message to peers: {_nodeConfig.NodeName}");
@@ -69,13 +72,14 @@ namespace Assist_Service.Services
 
         private void DiscoverPeers()
         {
-            string macAddress = NetworkHelper.GetMacAddress();
+           
             while (_isRunning)
             {
                 try
                 {
                     string token = SecurityHelper.GenerateToken(DiscoveryMessage);
-                    string message = $"{DiscoveryMessage}:{_nodeConfig.NodeName}:{macAddress}:{token}";
+                    
+                    string message = $"{DiscoveryMessage}:{_nodeConfig.NodeName}:{ipv4}:{macAddress}:{token}";
                     byte[] bytes = Encoding.UTF8.GetBytes(message);
                     _udpClient.Send(bytes, bytes.Length, new IPEndPoint(MulticastAddress, BroadcastPort));
 
@@ -104,16 +108,17 @@ namespace Assist_Service.Services
 
                     string messageType = parts[0];
                     string peerName = parts[1];
-                    string macAddress = parts[2];
-                    string token = parts[3];
+                    string ipAddress = parts[2];
+                    string macAddress = parts[3];
+                    string token = parts[4];
 
                     switch (messageType)
                     {
                         case DiscoveryMessage:
                             if (parts.Length >= 3 && SecurityHelper.ValidateToken(DiscoveryMessage, token))
                             {
-                                UpdatePeer(peerName, remoteEP, macAddress);
-                                UpdatePeerAndPersist(peerName, remoteEP, macAddress);
+                                UpdatePeer(peerName, remoteEP, ipAddress, macAddress);
+                                UpdatePeerAndPersist(peerName, remoteEP, ipAddress, macAddress);
                                 SendAcknowledgment(peerName, remoteEP);
                             }
                             break;
@@ -121,8 +126,8 @@ namespace Assist_Service.Services
                         case AcknowledgeMessage:
                             if (parts.Length >= 3 && SecurityHelper.ValidateToken(AcknowledgeMessage, token))
                             {
-                                UpdatePeer(peerName, remoteEP, macAddress);
-                                UpdatePeerAndPersist(peerName, remoteEP, macAddress);
+                                UpdatePeer(peerName, remoteEP, ipAddress, macAddress);
+                                UpdatePeerAndPersist(peerName, remoteEP, ipAddress, macAddress);
                             }
                             break;
 
@@ -141,17 +146,17 @@ namespace Assist_Service.Services
             }
         }
 
-        private Peer UpdatePeer(string peerName, IPEndPoint endpoint, string macAddress)
+        private Peer UpdatePeer(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
         {
             lock (_peersLock)
             {
                 var existingPeer = _peers.FirstOrDefault(p =>
-                    p.EndPoint.Address.Equals(endpoint.Address) &&
-                    p.EndPoint.Port == endpoint.Port);
+                    p.EndPoint.Address.Equals(endpoint.Address));
 
                 if (existingPeer != null)
                 {
                     existingPeer.NodeName = peerName;
+                    existingPeer.IPAddress = ipAddress; // NEW
                     existingPeer.MacAddress = macAddress;
                     existingPeer.LastSeen = DateTime.UtcNow;
                     existingPeer.MissedHeartbeats = 0;
@@ -166,6 +171,7 @@ namespace Assist_Service.Services
                     {
                         NodeName = peerName,
                         EndPoint = endpoint,
+                        IPAddress = ipAddress, // NEW
                         MacAddress = macAddress,
                         Status = "Online",
                         LastSeen = DateTime.UtcNow
@@ -173,7 +179,7 @@ namespace Assist_Service.Services
 
                     _peers.Add(newPeer);
 
-                    Logger.Log($"[UpdatePeer] New peer discovered: {peerName} @ {endpoint} (MAC: {macAddress})");
+                    Logger.Log($"[UpdatePeer] New peer discovered: {peerName} @ {ipAddress}:{endpoint.Port} (MAC: {macAddress})");
 
                     return newPeer;
                 }
@@ -181,16 +187,16 @@ namespace Assist_Service.Services
         }
 
         // Extended version: updates in-memory + persists
-        private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string macAddress)
+        private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
         {
-            var peer = UpdatePeer(peerName, endpoint, macAddress);
+            var peer = UpdatePeer(peerName, endpoint, ipAddress, macAddress);
             PeerFileStorage.UpdateAndSavePeer(peer);
         }
 
         private void SendAcknowledgment(string peerName, IPEndPoint remoteEP)
         {
             string token = SecurityHelper.GenerateToken(AcknowledgeMessage);
-            string message = $"{AcknowledgeMessage}:{_nodeConfig.NodeName}:{token}";
+            string message = $"{AcknowledgeMessage}:{_nodeConfig.NodeName}:{ipv4}:{macAddress}:{token}";
             byte[] bytes = Encoding.UTF8.GetBytes(message);
             _udpClient.Send(bytes, bytes.Length, remoteEP);
         }
@@ -239,5 +245,7 @@ namespace Assist_Service.Services
                 Thread.Sleep(10000); // Run cleanup every 10 seconds
             }
         }
+
+        
     }
 }

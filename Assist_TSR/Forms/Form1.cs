@@ -24,6 +24,9 @@ using Assist_TSR.Utilities;
 using Assist_TSR.Event_Handler;
 using Assist_TSR.Classes;
 using Assist_Service.IPC_Handler;
+using Assist_Service.Helpers;
+using Logging = Assist_TSR.Utilities.Logging;
+using FileHelper = Assist_TSR.Classes.FileHelper;
 
 
 
@@ -53,6 +56,8 @@ namespace Assist_TSR.Forms
         private readonly object _statusLock = new object();
         private Listen_App_Status listen_app_status;
 
+
+
         // OBJECT DECLARATION
         Server my_server;
         Logging loger;
@@ -73,7 +78,7 @@ namespace Assist_TSR.Forms
         //Listen_App_Status _listenAppStatus;
 
         // Power Management
-
+        private PeerSelectionManager selectionManager = new PeerSelectionManager();
         private System.Threading.Timer statusRefreshTimer;
         private readonly Power_Management powerManager;
         private readonly System.Windows.Forms.ToolTip toolTip;
@@ -1242,12 +1247,17 @@ namespace Assist_TSR.Forms
                 {
                     Width = iconSize,
                     Height = iconSize,
-                    Image = Properties.Resources.pc_icon1, // your PC icon
+                    Image = Properties.Resources.pc_icon1,
                     SizeMode = PictureBoxSizeMode.StretchImage,
                     Location = new Point(x, y),
                     Cursor = Cursors.Hand,
-                    Tag = peer.NodeName
+                    Tag = peer.NodeName,
+                    BorderStyle = selectionManager.SelectedPeers.Contains(peer.NodeName)
+                      ? BorderStyle.Fixed3D   // ✅ restore selection
+                      : BorderStyle.None
                 };
+
+                pcIcon.MouseClick += (s, e) => selectionManager.ToggleSelection((PictureBox)s);
 
                 Label nameLabel = new Label
                 {
@@ -1324,6 +1334,8 @@ namespace Assist_TSR.Forms
                     Tag = peer.NodeName
                 };
 
+                pcIcon.MouseClick += (s, e) => selectionManager.ToggleSelection((PictureBox)s);
+
                 Label nameLabel = new Label
                 {
                     Text = peer.NodeName,
@@ -1362,11 +1374,24 @@ namespace Assist_TSR.Forms
             }
         }
 
-
-
         private void panel10_Paint(object sender, PaintEventArgs e)
         {
 
+        }
+
+        private void shutdown_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (powerManager.ShutdownSelectedNodes(selectionManager))
+                    MessageBox.Show("Shutdown command sent to selected peers.");
+                else
+                    MessageBox.Show("No peers were selected.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}");
+            }
         }
 
         private void logUpdateTimer_Tick_1(object sender, EventArgs e)

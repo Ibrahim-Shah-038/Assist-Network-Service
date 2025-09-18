@@ -921,6 +921,7 @@ namespace Assist_TSR.Forms
             this.shutdown.TabIndex = 8;
             this.shutdown.Text = "Shut Down";
             this.shutdown.UseVisualStyleBackColor = false;
+            this.shutdown.Click += new System.EventHandler(this.shutdown_Click);
             // 
             // sleep
             // 

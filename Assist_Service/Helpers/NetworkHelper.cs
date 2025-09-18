@@ -5,6 +5,7 @@
 * Author: Your Name
 ******************************************************************************/
 
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -46,6 +47,19 @@ namespace Assist_Service.Helpers
 
             var primaryInterface = interfaces.FirstOrDefault();
             return primaryInterface?.GetPhysicalAddress()?.ToString() ?? "UNKNOWN";
+        }
+
+        public static string GetLocalIPv4()
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork) // IPv4 only
+                {
+                    return ip.ToString();
+                }
+            }
+            return "127.0.0.1"; // fallback
         }
     }
 }
