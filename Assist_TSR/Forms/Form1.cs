@@ -83,6 +83,8 @@ namespace Assist_TSR.Forms
         private System.Threading.Timer statusRefreshTimer;
         private readonly Power_Management powerManager;
         private readonly System.Windows.Forms.ToolTip toolTip;
+        // To track toggle state manually
+        private bool selectAllActive = false;
 
         public Form1()
         {
@@ -169,8 +171,10 @@ namespace Assist_TSR.Forms
 
                 // Power Management 
                 powerManager = new Power_Management();
-
                 powerManager.OnPeersUpdated += PowerManager_OnPeersUpdated;
+
+                // Handle click event manually (instead of CheckedChanged)
+                select_all.Click += select_all_Click;
 
 
                 Log("Constructor End");
@@ -1217,12 +1221,6 @@ namespace Assist_TSR.Forms
 
         private void DisplayOnlineNodes(List<Assist_Service.Models.Peer> peers)
         {
-            // Clear old icons but don't remove the label/buttons
-            /*foreach (Control ctrl in panel10.Controls.OfType<PictureBox>().ToList())
-            {
-                panel10.Controls.Remove(ctrl);
-                ctrl.Dispose();
-            }*/
 
             int startY = 60; // leave space below the "Online Nodes" label + buttons
             int x = 10;
@@ -1384,6 +1382,27 @@ namespace Assist_TSR.Forms
             catch (Exception ex)
             {
                 MessageBox.Show($"Error: {ex.Message}");
+            }
+        }
+
+        // Select Online Nodes Radio Button
+        private void select_all_Click(object sender, EventArgs e)
+        {
+            var pcIcons = panel10.Controls.OfType<PictureBox>();
+
+            if (!selectAllActive)
+            {
+                // ✅ First click → Select all
+                selectionManager.SelectAll(pcIcons);
+                selectAllActive = true;
+                select_all.Checked = true;
+            }
+            else
+            {
+                // ✅ Second click → Deselect all
+                selectionManager.DeselectAll(pcIcons);
+                selectAllActive = false;
+                select_all.Checked = false; // uncheck manually
             }
         }
 

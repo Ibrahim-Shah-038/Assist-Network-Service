@@ -28,6 +28,33 @@ namespace Assist_Service.Helpers
             }
         }
 
+        // ✅ Select all peers
+        public void SelectAll(IEnumerable<PictureBox> icons)
+        {
+            foreach (var pcIcon in icons)
+            {
+                if (pcIcon.Tag is string peerName)
+                {
+                    selectedPeers.Add(peerName);
+                    pcIcon.BorderStyle = BorderStyle.Fixed3D;
+                }
+            }
+        }
+
+        // ✅ Deselect all peers
+        public void DeselectAll(IEnumerable<PictureBox> icons)
+        {
+            foreach (var pcIcon in icons)
+            {
+                if (pcIcon.Tag is string peerName)
+                {
+                    selectedPeers.Remove(peerName);
+                    pcIcon.BorderStyle = BorderStyle.None;
+                }
+            }
+        }
+
+
         // Clear all selections (optional helper)
         public void ClearSelections()
         {
