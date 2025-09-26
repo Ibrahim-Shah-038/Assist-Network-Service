@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Assist_Service.Helpers;
 using Assist_Service.Models;
+using Newtonsoft.Json;
 
 namespace Assist_Service.Services
 {
@@ -29,6 +32,12 @@ namespace Assist_Service.Services
 
         string macAddress = NetworkHelper.GetMacAddress();
         string ipv4 = NetworkHelper.GetLocalIPv4(); // helper method you’ll add
+        private readonly string _peersFile = Path.Combine(
+            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+            "peers.json"
+        );
+
+        private List<Peer> __peers = new List<Peer>();
 
         public DiscoveryService(UdpClient udpClient, NodeConfig nodeConfig, List<Peer> peers, object peersLock)
         {
@@ -146,24 +155,36 @@ namespace Assist_Service.Services
             }
         }
 
-        private Peer UpdatePeer(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
+        public Peer UpdatePeer(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
         {
             lock (_peersLock)
             {
-                var existingPeer = _peers.FirstOrDefault(p =>
-                    p.EndPoint.Address.Equals(endpoint.Address));
+                if (File.Exists(_peersFile))
+                {
+                    var json = File.ReadAllText(_peersFile);
+                    __peers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
+                }
+
+                var existingPeer = _peers.FirstOrDefault(p => p.NodeName == peerName);
+
+                // Use peer-reported IP (not endpoint.Address, which may be 127.0.0.1)
+                string newIp = ipAddress;
 
                 if (existingPeer != null)
                 {
+                    if (existingPeer.IPAddress != newIp)
+                    {
+                        Console.WriteLine($"[UpdatePeer] Peer {peerName} updated IP: {existingPeer.IPAddress} -> {newIp}");
+                        existingPeer.IPAddress = newIp;
+                    }
+
                     existingPeer.NodeName = peerName;
-                    existingPeer.IPAddress = ipAddress; // NEW
                     existingPeer.MacAddress = macAddress;
                     existingPeer.LastSeen = DateTime.UtcNow;
+                    existingPeer.Status = "Online";
+                    existingPeer.EndPoint = endpoint; // keep runtime data
                     existingPeer.MissedHeartbeats = 0;
                     existingPeer.LeftGracefully = false;
-                    existingPeer.Status = "Online";
-
-                    return existingPeer;
                 }
                 else
                 {
@@ -171,20 +192,27 @@ namespace Assist_Service.Services
                     {
                         NodeName = peerName,
                         EndPoint = endpoint,
-                        IPAddress = ipAddress, // NEW
+                        IPAddress = newIp, // FIXED: now will be 192.168.0.100
                         MacAddress = macAddress,
                         Status = "Online",
-                        LastSeen = DateTime.UtcNow
+                        LastSeen = DateTime.UtcNow,
+                        MissedHeartbeats = 0,
+                        LeftGracefully = false
                     };
-
                     _peers.Add(newPeer);
 
-                    Logger.Log($"[UpdatePeer] New peer discovered: {peerName} @ {ipAddress}:{endpoint.Port} (MAC: {macAddress})");
-
-                    return newPeer;
+                    Console.WriteLine($"[UpdatePeer] New peer discovered: {peerName} @ {newIp}:{endpoint.Port} (MAC: {macAddress})");
+                    existingPeer = newPeer;
                 }
+
+                var updatedJson = JsonConvert.SerializeObject(_peers, Formatting.Indented);
+                File.WriteAllText(_peersFile, updatedJson);
+
+                return existingPeer;
             }
         }
+
+
 
         // Extended version: updates in-memory + persists
         private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)

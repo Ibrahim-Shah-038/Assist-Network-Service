@@ -61,6 +61,7 @@ namespace Assist_TSR.Forms
         // OBJECT DECLARATION
         Server my_server;
         Logging loger;
+        TSR_Logging tsr_log;
         Request_Data node_name;
         Request_Data fetch_data;
         Get_File_Path config_path;
@@ -94,6 +95,7 @@ namespace Assist_TSR.Forms
                 // OBJECT INSTANCES
                 my_server = new Server(this);
                 loger = new Logging();
+                tsr_log = new TSR_Logging();
                 node_name = new Request_Data(this);
                 fetch_data = new Request_Data(this);
                 config_path = new Get_File_Path();
@@ -166,11 +168,10 @@ namespace Assist_TSR.Forms
 
 
                 // Power Management 
-
                 powerManager = new Power_Management();
+
                 powerManager.OnPeersUpdated += PowerManager_OnPeersUpdated;
 
-                toolTip = new System.Windows.Forms.ToolTip();
 
                 Log("Constructor End");
             }
@@ -1201,35 +1202,27 @@ namespace Assist_TSR.Forms
 
         private void PowerManager_OnPeersUpdated(List<Assist_Service.Models.Peer> peers)
         {
-            // Ensure UI updates on main thread
-            if (panel10.InvokeRequired)
-            {
-                panel10.Invoke(new Action(() => DisplayOnlineNodes(peers)));
-            }
-            else
-            {
-                DisplayOnlineNodes(peers);
-            }
+            tsr_log.Log("Peers Loading...");
 
-            // Update Offline Nodes
-            if (panel11.InvokeRequired)
-            {
-                panel11.Invoke(new Action(() => DisplayOfflineNodes(peers)));
-            }
+            if (panel10.InvokeRequired)
+                panel10.Invoke(new Action(() => DisplayOnlineNodes(peers)));
             else
-            {
+                DisplayOnlineNodes(peers);
+
+            if (panel11.InvokeRequired)
+                panel11.Invoke(new Action(() => DisplayOfflineNodes(peers)));
+            else
                 DisplayOfflineNodes(peers);
-            }
         }
 
         private void DisplayOnlineNodes(List<Assist_Service.Models.Peer> peers)
         {
             // Clear old icons but don't remove the label/buttons
-            foreach (Control ctrl in panel10.Controls.OfType<PictureBox>().ToList())
+            /*foreach (Control ctrl in panel10.Controls.OfType<PictureBox>().ToList())
             {
                 panel10.Controls.Remove(ctrl);
                 ctrl.Dispose();
-            }
+            }*/
 
             int startY = 60; // leave space below the "Online Nodes" label + buttons
             int x = 10;

@@ -7,36 +7,48 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Timers;
 using Assist_Service.Helpers;
-using Assist_Service.Models; // for your existing Peer class
+using Assist_Service.Models; // for Peer class
 using Assist_TSR.Utilities;
 using Newtonsoft.Json;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Assist_Service.IPC_Handler
 {
     public class Power_Management
     {
-        private static readonly string DevFilePath = @"E:\Assist\Assist_Service\Assist_Service\bin\Debug\peers.json";
-        private static readonly string ProdFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "peers.json");
-        private readonly string peersFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "peers.json");
+        private static readonly string DevFilePath =
+            @"E:\Assist\Assist_Service\Assist_Service\bin\Debug\peers.json";
+
+        private static readonly string ProdFilePath =
+            Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "peers.json");
+
+        private readonly string peersFilePath =
+            Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "peers.json");
+
         private readonly System.Timers.Timer nodeRefreshTimer;
         private List<Peer> cachedPeers = new List<Peer>();
         private readonly PeerSelectionManager selectionManager = new PeerSelectionManager();
+
         public event Action<List<Peer>> OnPeersUpdated;
+
         private UdpClient udpListener;
         private const int BroadcastPort = 12349;
         private Remote_Power_Log PWR_Log = new Remote_Power_Log();
         private UdpClient _udpSender;
 
+        private string filePath;
+
         public Power_Management()
         {
+            // Pick Prod first, otherwise Dev
+            filePath = File.Exists(ProdFilePath) ? ProdFilePath : DevFilePath;
+
             nodeRefreshTimer = new System.Timers.Timer(5000); // refresh every 5 seconds
             nodeRefreshTimer.Elapsed += (s, e) => RefreshPeers();
             nodeRefreshTimer.Start();
+
             _udpSender = new UdpClient();
 
             RefreshPeers(); // initial load
@@ -46,13 +58,13 @@ namespace Assist_Service.IPC_Handler
         {
             try
             {
-                string filePath = File.Exists(ProdFilePath) ? ProdFilePath : DevFilePath;
-
                 if (!File.Exists(filePath))
                     return;
 
                 string json = File.ReadAllText(filePath);
-                var peers = JsonSerializer.Deserialize<List<Peer>>(json);
+
+                // ✅ Use Newtonsoft.Json so IPEndPointConverter works
+                var peers = JsonConvert.DeserializeObject<List<Peer>>(json);
 
                 if (peers != null)
                 {
@@ -72,16 +84,10 @@ namespace Assist_Service.IPC_Handler
             if (!File.Exists(peersFilePath))
                 throw new FileNotFoundException($"peers.json not found at {peersFilePath}");
 
-            // ✅ Use custom converter for IPEndPoint
-            var settings = new JsonSerializerSettings
-            {
-                Converters = { new IPtoStringConverter() }
-            };
-
             string jsonContent = File.ReadAllText(peersFilePath);
             var allPeers = JsonConvert.DeserializeObject<List<Peer>>(jsonContent);
 
-            // Debug: Log all loaded peers
+            // Debug log
             PWR_Log.PWR_Log($"Loaded {allPeers?.Count ?? 0} peers from file");
             if (allPeers != null)
             {
@@ -91,7 +97,9 @@ namespace Assist_Service.IPC_Handler
                 }
             }
 
-            var selectedPeers = allPeers?.FindAll(p => selectionManager.SelectedPeers.Contains(p.NodeName)) ?? new List<Peer>();
+            var selectedPeers = allPeers?
+                .FindAll(p => selectionManager.SelectedPeers.Contains(p.NodeName))
+                ?? new List<Peer>();
 
             if (selectedPeers.Count == 0)
             {
@@ -119,13 +127,10 @@ namespace Assist_Service.IPC_Handler
                     string message = "SHUTDOWN";
                     byte[] buffer = Encoding.UTF8.GetBytes(message);
 
-                    // Build remote endpoint using peer.IPAddress (IPv4) and shutdown port
                     IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(peer.IPAddress), 12349);
 
-                    // ✅ Actual send
                     int bytesSent = udpClient.Send(buffer, buffer.Length, remoteEP);
 
-                    // ✅ Success log
                     PWR_Log.PWR_Log(
                         $"✅ Shutdown command ({bytesSent} bytes) sent to Node: {peer.NodeName} at {peer.IPAddress}:{remoteEP.Port}"
                     );
@@ -133,13 +138,11 @@ namespace Assist_Service.IPC_Handler
             }
             catch (Exception ex)
             {
-                // ❌ Failure log
                 PWR_Log.PWR_Log(
                     $"❌ Failed to send shutdown command to {peer.NodeName} ({peer.IPAddress}): {ex.Message}"
                 );
             }
         }
-
 
         private void StartGoodbyeListener()
         {
@@ -163,8 +166,6 @@ namespace Assist_Service.IPC_Handler
                     if (message == "GOODBYE")
                     {
                         Console.WriteLine($"[Client] Received GOODBYE from {ep.Address}");
-
-                        // Update peers.json to set that peer offline
                         MarkPeerOffline(ep.Address.ToString());
                     }
                 }
@@ -182,7 +183,7 @@ namespace Assist_Service.IPC_Handler
             if (!File.Exists(peersFilePath))
                 return;
 
-            var peers = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Peer>>(File.ReadAllText(peersFilePath));
+            var peers = JsonConvert.DeserializeObject<List<Peer>>(File.ReadAllText(peersFilePath));
 
             foreach (var peer in peers)
             {
@@ -193,8 +194,10 @@ namespace Assist_Service.IPC_Handler
                 }
             }
 
-            File.WriteAllText(peersFilePath,
-                Newtonsoft.Json.JsonConvert.SerializeObject(peers, Newtonsoft.Json.Formatting.Indented));
+            File.WriteAllText(
+                peersFilePath,
+                JsonConvert.SerializeObject(peers, Formatting.Indented)
+            );
 
             Console.WriteLine($"[Client] Updated peer {ipAddress} -> Offline (Path: {peersFilePath})");
         }
