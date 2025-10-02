@@ -866,6 +866,7 @@ namespace Assist_TSR.Forms
             this.power_up.TabIndex = 8;
             this.power_up.Text = "Power Up";
             this.power_up.UseVisualStyleBackColor = false;
+            this.power_up.Click += new System.EventHandler(this.power_up_Click);
             // 
             // select_all_2
             // 
@@ -934,6 +935,7 @@ namespace Assist_TSR.Forms
             this.sleep.TabIndex = 7;
             this.sleep.Text = "Sleep";
             this.sleep.UseVisualStyleBackColor = false;
+            this.sleep.Click += new System.EventHandler(this.sleep_Click);
             // 
             // select_all
             // 

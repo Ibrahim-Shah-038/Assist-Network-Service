@@ -173,6 +173,8 @@ namespace Assist_TSR.Forms
                 powerManager = new Power_Management();
                 powerManager.OnPeersUpdated += PowerManager_OnPeersUpdated;
 
+                
+
                 // Handle click event manually (instead of CheckedChanged)
                 select_all.Click += select_all_Click;
 
@@ -1385,6 +1387,22 @@ namespace Assist_TSR.Forms
             }
         }
 
+        private void sleep_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (powerManager.SleepSelectedNodes(selectionManager))
+                    MessageBox.Show("Sleep command sent to selected peers.");
+                else
+                    MessageBox.Show("No peers were selected.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}");
+            }
+
+        }
+
         // Select Online Nodes Radio Button
         private void select_all_Click(object sender, EventArgs e)
         {
@@ -1403,6 +1421,21 @@ namespace Assist_TSR.Forms
                 selectionManager.DeselectAll(pcIcons);
                 selectAllActive = false;
                 select_all.Checked = false; // uncheck manually
+            }
+        }
+
+        private void power_up_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (powerManager.PowerUpSelectedNodes(selectionManager))
+                    MessageBox.Show("Power Up command sent to selected peers.");
+                else
+                    MessageBox.Show("No peers were selected.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}");
             }
         }
 

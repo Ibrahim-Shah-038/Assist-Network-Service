@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Assist_Service.Helpers;
 
 namespace Assist_Service.Services
 {
-    public class Remote_Power_Management_Service : IDisposable
+    public class Remote_Power_Management_Service //: IDisposable
     {
         private bool _isRunning;
         private Thread _listenerThread;
@@ -18,6 +21,9 @@ namespace Assist_Service.Services
 
         private const int ListenPort = 12349;
         private const int BroadcastPort = 12349;
+        private bool _running_Pwr_Up;
+        private CancellationTokenSource _cts_pwr_up;
+        private Task _listenerTask;
 
         // -------------------------------
         // Start service
@@ -34,6 +40,12 @@ namespace Assist_Service.Services
             };
             _listenerThread.Start();
 
+            //power up
+            _running_Pwr_Up = true;
+            _cts_pwr_up = new CancellationTokenSource();
+            _listenerTask = Task.Run(() => ListenForPowerCommands(_cts_pwr_up.Token));
+            PWR_Log.PWR_Log("✅ AssistWakeService started and listening on AssistWakePipe.");
+
             PWR_Log.PWR_Log($"[Service] UDP listener thread started on port {ListenPort}");
         }
 
@@ -45,6 +57,7 @@ namespace Assist_Service.Services
             if (!_isRunning) return;
 
             _isRunning = false;
+            _running_Pwr_Up = false;
 
             try
             {
@@ -62,6 +75,10 @@ namespace Assist_Service.Services
                 }
                 _listenerThread = null;
             }
+
+            _cts_pwr_up.Cancel();
+            _listenerTask?.Wait();
+            PWR_Log.PWR_Log("🛑 AssistWakeService stopped.");
 
             PWR_Log.PWR_Log("[Service] Stopped.");
         }
@@ -90,6 +107,16 @@ namespace Assist_Service.Services
                         PWR_Log.PWR_Log("[Service] Shutdown command received.");
                         BroadcastGoodbye();
                         ExecuteShutdown();
+                    }
+                    else if (command.Equals("SLEEP", StringComparison.OrdinalIgnoreCase))
+                    {
+                        PWR_Log.PWR_Log("[Service] Sleep command received.");
+                        BroadcastSleeping();   // optional: notify before sleeping
+                        ExecuteSleep();       // ✅ implement this to put system to sleep
+                    }
+                    else
+                    {
+                        PWR_Log.PWR_Log($"[Service] Unknown command '{command}' ignored.");
                     }
                 }
             }
@@ -134,6 +161,28 @@ namespace Assist_Service.Services
             }
         }
 
+        private void BroadcastSleeping()
+        {
+            try
+            {
+                using (UdpClient udp = new UdpClient())
+                {
+                    udp.EnableBroadcast = true;
+                    IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, BroadcastPort);
+
+                    string message = "SLEEPING"; // ✅ notify others this peer is going to sleep
+                    byte[] data = Encoding.UTF8.GetBytes(message);
+                    udp.Send(data, data.Length, ep);
+
+                    PWR_Log.PWR_Log("[Service] Sent SLEEPING broadcast.");
+                }
+            }
+            catch (Exception ex)
+            {
+                PWR_Log.PWR_Log($"[Service] Broadcast error: {ex.Message}");
+            }
+        }
+
         // -------------------------------
         // Execute system shutdown
         // -------------------------------
@@ -161,14 +210,124 @@ namespace Assist_Service.Services
             }
         }
 
-        // -------------------------------
-        // IDisposable support
-        // -------------------------------
-        public void Dispose()
+        private void ExecuteSleep()
+        {
+            try
+            {
+                using (NamedPipeClientStream pipeClient =
+                    new NamedPipeClientStream(".", "sleep_exe", PipeDirection.Out))
+                {
+                    pipeClient.Connect(2000); // wait up to 2s to connect
+                    byte[] messageBytes = Encoding.UTF8.GetBytes("SLEEP");
+                    pipeClient.Write(messageBytes, 0, messageBytes.Length);
+                    pipeClient.Flush();
+                }
+
+                PWR_Log.PWR_Log("[Service] Sent sleep request via Named Pipe.");
+            }
+            catch (Exception ex)
+            {
+                PWR_Log.PWR_Log($"[Service] Sleep error (pipe): {ex.Message}");
+            }
+        }
+
+        // POWER UP SHUTDOWN NODES
+
+        private void ListenForPowerCommands(CancellationToken token)
+        {
+            while (_running_Pwr_Up && !token.IsCancellationRequested)
+            {
+                try
+                {
+                    using (NamedPipeServerStream pipeServer = new NamedPipeServerStream("AssistWakePipe", PipeDirection.In))
+                    {
+                        pipeServer.WaitForConnection();
+
+                        using (StreamReader reader = new StreamReader(pipeServer))
+                        {
+                            string command = reader.ReadLine();
+                            if (!string.IsNullOrEmpty(command))
+                            {
+                                PWR_Log.PWR_Log($"📥 Received command: {command}");
+                                HandleCommand(command);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    PWR_Log.PWR_Log($"❌ Error in ListenForPipeCommands: {ex.Message}");
+                }
+            }
+        }
+
+        private void HandleCommand(string command)
+        {
+            if (command.StartsWith("POWERUP|"))
+            {
+                string mac = command.Split('|')[1];
+                PWR_Log.PWR_Log($"⚡ Sending WOL packet to {mac}...");
+                try
+                {
+                    WakeOnLan.SendMagicPacket(mac);
+                    PWR_Log.PWR_Log($"✅ WOL packet sent successfully to {mac}");
+                }
+                catch (Exception ex)
+                {
+                    PWR_Log.PWR_Log($"❌ Failed to send WOL packet: {ex.Message}");
+                }
+            }
+            else
+            {
+                PWR_Log.PWR_Log($"⚠ Unknown command received: {command}");
+            }
+        }
+
+        public static class WakeOnLan
+        {
+            public static void SendMagicPacket(string macAddress)
+            {
+                if (string.IsNullOrWhiteSpace(macAddress))
+                    throw new ArgumentException("MAC Address cannot be empty");
+
+                byte[] macBytes = ParseMacAddress(macAddress);
+
+                // Magic packet = 6 x 0xFF followed by 16 repetitions of MAC
+                byte[] packet = new byte[6 + (16 * macBytes.Length)];
+                for (int i = 0; i < 6; i++) packet[i] = 0xFF;
+                for (int i = 6; i < packet.Length; i += macBytes.Length)
+                    Buffer.BlockCopy(macBytes, 0, packet, i, macBytes.Length);
+
+                using (UdpClient client = new UdpClient())
+                {
+                    client.EnableBroadcast = true;
+                    IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, 9); // Port 9 is standard for WOL
+                    client.Send(packet, packet.Length, ep);
+                }
+            }
+
+            private static byte[] ParseMacAddress(string mac)
+            {
+                string[] hex = mac.Split(':', '-');
+                if (hex.Length != 6)
+                    throw new ArgumentException("Invalid MAC address format. Use format: 00:11:22:33:44:55");
+
+                byte[] bytes = new byte[6];
+                for (int i = 0; i < 6; i++)
+                    bytes[i] = Convert.ToByte(hex[i], 16);
+
+                return bytes;
+            }
+
+            // -------------------------------
+            // IDisposable support
+            // -------------------------------
+            /*public void Dispose()
         {
             if (_disposed) return;
             Stop();
             _disposed = true;
+        }*/
         }
     }
-}
+    }
