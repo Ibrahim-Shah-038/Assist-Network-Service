@@ -1,13 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Assist_Service.Helpers;
+using Assist_Service.Models;
+using Newtonsoft.Json;
 
 namespace Assist_Service.Services
 {
@@ -24,6 +28,13 @@ namespace Assist_Service.Services
         private bool _running_Pwr_Up;
         private CancellationTokenSource _cts_pwr_up;
         private Task _listenerTask;
+        private bool isRunning = false;
+        private UdpClient udpListener;
+        private static readonly string DevFilePath =
+            @"E:\Assist\Assist_Service\Assist_Service\bin\Debug\peers.json";
+
+        private static readonly string ProdFilePath =
+            Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "peers.json");
 
         // -------------------------------
         // Start service
@@ -39,6 +50,8 @@ namespace Assist_Service.Services
                 IsBackground = true
             };
             _listenerThread.Start();
+
+            StartGoodbyeListener();
 
             //power up
             _running_Pwr_Up = true;
@@ -75,6 +88,8 @@ namespace Assist_Service.Services
                 }
                 _listenerThread = null;
             }
+
+            StopGoodbyeListener();
 
             _cts_pwr_up.Cancel();
             _listenerTask?.Wait();
@@ -283,6 +298,82 @@ namespace Assist_Service.Services
             }
         }
 
+        // -------------------------------
+        // GOODBYE LISTENER
+        // -------------------------------
+
+        private void StartGoodbyeListener()
+        {
+            udpListener = new UdpClient(BroadcastPort);
+            isRunning = true;
+            Thread listenerThread = new Thread(ListenForGoodbye);
+            listenerThread.IsBackground = true;
+            listenerThread.Start();
+        }
+
+        private void ListenForGoodbye()
+        {
+            IPEndPoint ep = new IPEndPoint(IPAddress.Any, BroadcastPort);
+
+            while (isRunning)
+            {
+                try
+                {
+                    byte[] data = udpListener.Receive(ref ep);
+                    string message = Encoding.UTF8.GetString(data);
+
+                    if (message == "GOODBYE")
+                    {
+                        PWR_Log.PWR_Log($"[Service] Received GOODBYE from {ep.Address}");
+                        MarkPeerOffline(ep.Address.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (isRunning) // avoid spamming logs when shutting down
+                        PWR_Log.PWR_Log($"[Service] Goodbye listener error: {ex.Message}");
+                }
+            }
+        }
+
+        private void MarkPeerOffline(string ipAddress)
+        {
+            string peersFilePath = File.Exists(DevFilePath) ? DevFilePath : ProdFilePath;
+
+            if (!File.Exists(peersFilePath))
+                return;
+
+            var peers = JsonConvert.DeserializeObject<List<Peer>>(File.ReadAllText(peersFilePath));
+
+            foreach (var peer in peers)
+            {
+                if (peer.EndPoint?.Address.ToString() == ipAddress)
+                {
+                    peer.Status = "Offline";
+                    break;
+                }
+            }
+
+            File.WriteAllText(
+                peersFilePath,
+                JsonConvert.SerializeObject(peers, Formatting.Indented)
+            );
+
+            Console.WriteLine($"[Client] Updated peer {ipAddress} -> Offline (Path: {peersFilePath})");
+        }
+
+        private void StopGoodbyeListener()
+        {
+            isRunning = false;
+            udpListener?.Close();
+            udpListener = null;
+            PWR_Log.PWR_Log("[Service] Goodbye listener stopped.");
+        }
+
+        // -------------------------------
+        // WAKE ON LAN CLASSES
+        // -------------------------------
+
         public static class WakeOnLan
         {
             public static void SendMagicPacket(string macAddress)
@@ -318,6 +409,8 @@ namespace Assist_Service.Services
 
                 return bytes;
             }
+
+            
 
             // -------------------------------
             // IDisposable support

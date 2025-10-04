@@ -37,7 +37,7 @@ namespace Assist_Service.IPC_Handler
 
         public event Action<List<Peer>> OnPeersUpdated;
 
-        private UdpClient udpListener;
+        
         private const int BroadcastPort = 12349;
         private Remote_Power_Log PWR_Log = new Remote_Power_Log();
         private UdpClient _udpSender;
@@ -218,65 +218,6 @@ namespace Assist_Service.IPC_Handler
                 );
             }
         }
-
-        private void StartGoodbyeListener()
-        {
-            udpListener = new UdpClient(BroadcastPort);
-            Thread listenerThread = new Thread(ListenForGoodbye);
-            listenerThread.IsBackground = true;
-            listenerThread.Start();
-        }
-
-        private void ListenForGoodbye()
-        {
-            IPEndPoint ep = new IPEndPoint(IPAddress.Any, BroadcastPort);
-
-            while (true)
-            {
-                try
-                {
-                    byte[] data = udpListener.Receive(ref ep);
-                    string message = Encoding.UTF8.GetString(data);
-
-                    if (message == "GOODBYE")
-                    {
-                        Console.WriteLine($"[Client] Received GOODBYE from {ep.Address}");
-                        MarkPeerOffline(ep.Address.ToString());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Client] Goodbye listener error: {ex.Message}");
-                }
-            }
-        }
-
-        private void MarkPeerOffline(string ipAddress)
-        {
-            string peersFilePath = File.Exists(DevFilePath) ? DevFilePath : ProdFilePath;
-
-            if (!File.Exists(peersFilePath))
-                return;
-
-            var peers = JsonConvert.DeserializeObject<List<Peer>>(File.ReadAllText(peersFilePath));
-
-            foreach (var peer in peers)
-            {
-                if (peer.EndPoint?.Address.ToString() == ipAddress)
-                {
-                    peer.Status = "Offline";
-                    break;
-                }
-            }
-
-            File.WriteAllText(
-                peersFilePath,
-                JsonConvert.SerializeObject(peers, Formatting.Indented)
-            );
-
-            Console.WriteLine($"[Client] Updated peer {ipAddress} -> Offline (Path: {peersFilePath})");
-        }
-
 
         private void StartSleepPipeListener()
         {
