@@ -24,7 +24,8 @@ namespace Assist_Service.Services
         private bool _disposed;
 
         private const int ListenPort = 12349;
-        private const int BroadcastPort = 12349;
+        private const int GoodByePort = 12350;
+        private const int SleepPort = 12351;
         private bool _running_Pwr_Up;
         private CancellationTokenSource _cts_pwr_up;
         private Task _listenerTask;
@@ -161,7 +162,7 @@ namespace Assist_Service.Services
                 using (UdpClient udp = new UdpClient())
                 {
                     udp.EnableBroadcast = true;
-                    IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, BroadcastPort);
+                    IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, GoodByePort);
 
                     string message = "GOODBYE";
                     byte[] data = Encoding.UTF8.GetBytes(message);
@@ -183,7 +184,7 @@ namespace Assist_Service.Services
                 using (UdpClient udp = new UdpClient())
                 {
                     udp.EnableBroadcast = true;
-                    IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, BroadcastPort);
+                    IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, SleepPort);
 
                     string message = "SLEEPING"; // ✅ notify others this peer is going to sleep
                     byte[] data = Encoding.UTF8.GetBytes(message);
@@ -304,7 +305,7 @@ namespace Assist_Service.Services
 
         private void StartGoodbyeListener()
         {
-            udpListener = new UdpClient(BroadcastPort);
+            udpListener = new UdpClient(GoodByePort);
             isRunning = true;
             Thread listenerThread = new Thread(ListenForGoodbye);
             listenerThread.IsBackground = true;
@@ -313,7 +314,7 @@ namespace Assist_Service.Services
 
         private void ListenForGoodbye()
         {
-            IPEndPoint ep = new IPEndPoint(IPAddress.Any, BroadcastPort);
+            IPEndPoint ep = new IPEndPoint(IPAddress.Any, SleepPort);
 
             while (isRunning)
             {

@@ -54,29 +54,58 @@ namespace Assist_Service.Helpers
 
             var peers = LoadPeersFromJson();
 
-            // Match by NodeName or MacAddress (persistent identifiers)
-            var existing = peers.FirstOrDefault(p =>
-                (!string.IsNullOrEmpty(p.NodeName) && p.NodeName == peer.NodeName)
-                || (!string.IsNullOrEmpty(p.MacAddress) && p.MacAddress == peer.MacAddress)
-            );
+            // ✅ First, try to find an existing peer by MAC address (unique device identity)
+            Peer existing = null;
+            if (!string.IsNullOrEmpty(peer.MacAddress))
+            {
+                existing = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.MacAddress) &&
+                    p.MacAddress.Equals(peer.MacAddress, StringComparison.OrdinalIgnoreCase));
+            }
 
             if (existing != null)
             {
-                existing.NodeName = peer.NodeName;
-                existing.IPAddress = peer.IPAddress;   // ✅ Always update to latest IP
-                existing.MacAddress = peer.MacAddress;
+                // ✅ If NodeName changed, update it — don't add a new peer
+                if (!string.Equals(existing.NodeName, peer.NodeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    existing.NodeName = peer.NodeName;
+                }
+
+                // ✅ Update latest network and status info
+                existing.IPAddress = peer.IPAddress;
                 existing.LastSeen = peer.LastSeen;
                 existing.Status = peer.Status;
                 existing.LeftGracefully = peer.LeftGracefully;
                 existing.MissedHeartbeats = peer.MissedHeartbeats;
 
-                // Always update EndPoint as well
                 if (peer.EndPoint != null)
                     existing.EndPoint = peer.EndPoint;
             }
             else
             {
-                peers.Add(peer);
+                // ✅ Fallback: check by NodeName (if MAC missing)
+                existing = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.NodeName) &&
+                    p.NodeName.Equals(peer.NodeName, StringComparison.OrdinalIgnoreCase));
+
+                if (existing != null)
+                {
+                    // Update Node info if found by name
+                    existing.IPAddress = peer.IPAddress;
+                    existing.MacAddress = peer.MacAddress;
+                    existing.LastSeen = peer.LastSeen;
+                    existing.Status = peer.Status;
+                    existing.LeftGracefully = peer.LeftGracefully;
+                    existing.MissedHeartbeats = peer.MissedHeartbeats;
+
+                    if (peer.EndPoint != null)
+                        existing.EndPoint = peer.EndPoint;
+                }
+                else
+                {
+                    // ✅ If completely new MAC and NodeName, add as new peer
+                    peers.Add(peer);
+                }
             }
 
             SavePeersToJson(peers);
