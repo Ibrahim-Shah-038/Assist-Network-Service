@@ -326,7 +326,7 @@ namespace Assist_Service.Services
                     if (message == "GOODBYE")
                     {
                         PWR_Log.PWR_Log($"[Service] Received GOODBYE from {ep.Address}");
-                        MarkPeerOffline(ep.Address.ToString());
+                        PeerFileStorage.MarkPeerOffline(ep.Address.ToString());
                     }
                 }
                 catch (Exception ex)
@@ -335,32 +335,6 @@ namespace Assist_Service.Services
                         PWR_Log.PWR_Log($"[Service] Goodbye listener error: {ex.Message}");
                 }
             }
-        }
-
-        private void MarkPeerOffline(string ipAddress)
-        {
-            string peersFilePath = File.Exists(DevFilePath) ? DevFilePath : ProdFilePath;
-
-            if (!File.Exists(peersFilePath))
-                return;
-
-            var peers = JsonConvert.DeserializeObject<List<Peer>>(File.ReadAllText(peersFilePath));
-
-            foreach (var peer in peers)
-            {
-                if (peer.EndPoint?.Address.ToString() == ipAddress)
-                {
-                    peer.Status = "Offline";
-                    break;
-                }
-            }
-
-            File.WriteAllText(
-                peersFilePath,
-                JsonConvert.SerializeObject(peers, Formatting.Indented)
-            );
-
-            Console.WriteLine($"[Client] Updated peer {ipAddress} -> Offline (Path: {peersFilePath})");
         }
 
         private void StopGoodbyeListener()
