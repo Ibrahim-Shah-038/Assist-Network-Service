@@ -44,29 +44,52 @@ namespace Assist_Service.Helpers
         }
 
         // Update or add a peer and save immediately
-        public static void UpdateAndSavePeer(Peer peer)
+        public static void UpdateAndSavePeer(Peer peer, string originalMacAddress = null, string originalNodeName = null)
         {
             if (peer.EndPoint != null)
                 peer.IPAddress = peer.EndPoint.Address.ToString();
 
             var peers = LoadPeersFromJson();
-
             Peer existing = null;
 
-            // Match primarily by MAC address
-            if (!string.IsNullOrEmpty(peer.MacAddress))
+            // Method 1: Use original MAC if provided
+            if (!string.IsNullOrEmpty(originalMacAddress))
+            {
+                existing = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.MacAddress) &&
+                    p.MacAddress.Equals(originalMacAddress, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Method 2: Use original NodeName if provided
+            if (existing == null && !string.IsNullOrEmpty(originalNodeName))
+            {
+                existing = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.NodeName) &&
+                    p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Method 3: Fallback to current MAC
+            if (existing == null && !string.IsNullOrEmpty(peer.MacAddress))
             {
                 existing = peers.FirstOrDefault(p =>
                     !string.IsNullOrEmpty(p.MacAddress) &&
                     p.MacAddress.Equals(peer.MacAddress, StringComparison.OrdinalIgnoreCase));
             }
 
+            // Method 4: Fallback to current NodeName
+            if (existing == null && !string.IsNullOrEmpty(peer.NodeName))
+            {
+                existing = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.NodeName) &&
+                    p.NodeName.Equals(peer.NodeName, StringComparison.OrdinalIgnoreCase));
+            }
+
             if (existing != null)
             {
-                if (!string.Equals(existing.NodeName, peer.NodeName, StringComparison.OrdinalIgnoreCase))
-                    existing.NodeName = peer.NodeName;
-
+                // Update all fields
+                existing.NodeName = peer.NodeName;
                 existing.IPAddress = peer.IPAddress;
+                existing.MacAddress = peer.MacAddress;
                 existing.LastSeen = peer.LastSeen;
                 existing.Status = peer.Status;
                 existing.LeftGracefully = peer.LeftGracefully;
@@ -77,27 +100,7 @@ namespace Assist_Service.Helpers
             }
             else
             {
-                // Fallback: match by NodeName
-                existing = peers.FirstOrDefault(p =>
-                    !string.IsNullOrEmpty(p.NodeName) &&
-                    p.NodeName.Equals(peer.NodeName, StringComparison.OrdinalIgnoreCase));
-
-                if (existing != null)
-                {
-                    existing.IPAddress = peer.IPAddress;
-                    existing.MacAddress = peer.MacAddress;
-                    existing.LastSeen = peer.LastSeen;
-                    existing.Status = peer.Status;
-                    existing.LeftGracefully = peer.LeftGracefully;
-                    existing.MissedHeartbeats = peer.MissedHeartbeats;
-
-                    if (peer.EndPoint != null)
-                        existing.EndPoint = peer.EndPoint;
-                }
-                else
-                {
-                    peers.Add(peer);
-                }
+                peers.Add(peer);
             }
 
             SavePeersToJson(peers);

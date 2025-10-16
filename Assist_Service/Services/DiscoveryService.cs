@@ -18,7 +18,7 @@ namespace Assist_Service.Services
     {
         private readonly UdpClient _udpClient;
         private readonly NodeConfig _nodeConfig;
-        private readonly List<Peer> _peers;
+        private  List<Peer> _peers;
         private readonly object _peersLock;
         private bool _isRunning;
 
@@ -155,34 +155,64 @@ namespace Assist_Service.Services
             }
         }
 
-        public Peer UpdatePeer(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
+        public Peer UpdatePeer(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress, string originalNodeName = null)
         {
             lock (_peersLock)
             {
                 if (File.Exists(_peersFile))
                 {
                     var json = File.ReadAllText(_peersFile);
-                    __peers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
+                    _peers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
                 }
 
-                var existingPeer = _peers.FirstOrDefault(p => p.NodeName == peerName);
+                Peer existingPeer = null;
+
+                // STRATEGY 1: Find by MAC address first (most reliable for renames)
+                if (!string.IsNullOrEmpty(macAddress))
+                {
+                    existingPeer = _peers.FirstOrDefault(p =>
+                        !string.IsNullOrEmpty(p.MacAddress) &&
+                        p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // STRATEGY 2: Find by original node name (if provided for renames)
+                if (existingPeer == null && !string.IsNullOrEmpty(originalNodeName))
+                {
+                    existingPeer = _peers.FirstOrDefault(p =>
+                        !string.IsNullOrEmpty(p.NodeName) &&
+                        p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // STRATEGY 3: Find by current node name (fallback)
+                if (existingPeer == null)
+                {
+                    existingPeer = _peers.FirstOrDefault(p => p.NodeName == peerName);
+                }
 
                 // Use peer-reported IP (not endpoint.Address, which may be 127.0.0.1)
                 string newIp = ipAddress;
 
                 if (existingPeer != null)
                 {
+                    string oldName = existingPeer.NodeName;
+                    bool wasRenamed = !string.Equals(oldName, peerName, StringComparison.OrdinalIgnoreCase);
+
                     if (existingPeer.IPAddress != newIp)
                     {
-                        Console.WriteLine($"[UpdatePeer] Peer {peerName} updated IP: {existingPeer.IPAddress} -> {newIp}");
+                        Console.WriteLine($"[UpdatePeer] Peer {oldName} updated IP: {existingPeer.IPAddress} -> {newIp}");
                         existingPeer.IPAddress = newIp;
+                    }
+
+                    if (wasRenamed)
+                    {
+                        Console.WriteLine($"[UpdatePeer] Peer renamed: {oldName} -> {peerName}");
                     }
 
                     existingPeer.NodeName = peerName;
                     existingPeer.MacAddress = macAddress;
                     existingPeer.LastSeen = DateTime.UtcNow;
                     existingPeer.Status = "Online";
-                    existingPeer.EndPoint = endpoint; // keep runtime data
+                    existingPeer.EndPoint = endpoint;
                     existingPeer.MissedHeartbeats = 0;
                     existingPeer.LeftGracefully = false;
                 }
@@ -192,7 +222,7 @@ namespace Assist_Service.Services
                     {
                         NodeName = peerName,
                         EndPoint = endpoint,
-                        IPAddress = newIp, // FIXED: now will be 192.168.0.100
+                        IPAddress = newIp,
                         MacAddress = macAddress,
                         Status = "Online",
                         LastSeen = DateTime.UtcNow,
@@ -215,10 +245,56 @@ namespace Assist_Service.Services
 
 
         // Extended version: updates in-memory + persists
+        // Extended version: updates in-memory + persists with original identifiers
         private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
         {
-            var peer = UpdatePeer(peerName, endpoint, ipAddress, macAddress);
-            PeerFileStorage.UpdateAndSavePeer(peer);
+            // First, try to find the original node name before updating
+            string originalNodeName = FindOriginalNodeName(macAddress, peerName);
+
+            var peer = UpdatePeer(peerName, endpoint, ipAddress, macAddress, originalNodeName);
+
+            // Pass original identifiers to prevent duplicates during renames
+            PeerFileStorage.UpdateAndSavePeer(peer, originalMacAddress: macAddress, originalNodeName: originalNodeName);
+        }
+
+        private string FindOriginalNodeName(string macAddress, string currentPeerName)
+        {
+            try
+            {
+                if (File.Exists(_peersFile))
+                {
+                    var json = File.ReadAllText(_peersFile);
+                    var existingPeers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
+
+                    // Try to find by MAC address first
+                    if (!string.IsNullOrEmpty(macAddress))
+                    {
+                        var peerByMac = existingPeers.FirstOrDefault(p =>
+                            !string.IsNullOrEmpty(p.MacAddress) &&
+                            p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
+
+                        if (peerByMac != null && !string.Equals(peerByMac.NodeName, currentPeerName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return peerByMac.NodeName; // Return original name if different
+                        }
+                    }
+
+                    // If MAC not found or same name, try to find by other means
+                    var peerByCurrentName = existingPeers.FirstOrDefault(p =>
+                        p.NodeName == currentPeerName);
+
+                    if (peerByCurrentName != null)
+                    {
+                        return peerByCurrentName.NodeName; // Name hasn't changed
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[FindOriginalNodeName] Error: {ex.Message}");
+            }
+
+            return currentPeerName; // Fallback to current name
         }
 
         private void SendAcknowledgment(string peerName, IPEndPoint remoteEP)
