@@ -1223,6 +1223,20 @@ namespace Assist_TSR.Forms
 
         private void DisplayOnlineNodes(List<Assist_Service.Models.Peer> peers)
         {
+            // ✅ Clear only peer icons and labels, not the title/buttons
+            foreach (Control ctrl in panel10.Controls.OfType<PictureBox>().ToList())
+            {
+                panel10.Controls.Remove(ctrl);
+                ctrl.Dispose();
+            }
+
+            foreach (Control ctrl in panel10.Controls.OfType<Label>()
+                .Where(l => l.Text != "Online Nodes" && l.Name != "OnlineNodesLabel")
+                .ToList())
+            {
+                panel10.Controls.Remove(ctrl);
+                ctrl.Dispose();
+            }
 
             int startY = 60; // leave space below the "Online Nodes" label + buttons
             int x = 10;
@@ -1231,7 +1245,6 @@ namespace Assist_TSR.Forms
             int iconSize = 40;
             int margin = 10;
             int maxPerRow = (panel10.Width - 20) / (iconSize + margin);
-
             int count = 0;
 
             foreach (var peer in peers.Where(p => p.Status == "Online"))
@@ -1246,7 +1259,7 @@ namespace Assist_TSR.Forms
                     Cursor = Cursors.Hand,
                     Tag = peer.NodeName,
                     BorderStyle = selectionManager.SelectedPeers.Contains(peer.NodeName)
-                      ? BorderStyle.Fixed3D   // ✅ restore selection
+                      ? BorderStyle.Fixed3D
                       : BorderStyle.None
                 };
 
@@ -1260,19 +1273,15 @@ namespace Assist_TSR.Forms
                 };
 
                 nameLabel.Location = new Point(
-                pcIcon.Left + (pcIcon.Width - nameLabel.PreferredWidth) / 2,
-                pcIcon.Bottom + 5
+                    pcIcon.Left + (pcIcon.Width - nameLabel.PreferredWidth) / 2,
+                    pcIcon.Bottom + 5
                 );
 
-                // Tooltip on hover
+                // Tooltip
                 System.Windows.Forms.ToolTip tooltip = new System.Windows.Forms.ToolTip();
                 tooltip.SetToolTip(pcIcon, $"Node: {peer.NodeName}\n" +
-                    //$"IP: {peer.EndPoint?.Address}\n" +
-                    //$"Port: {peer.EndPoint?.Port}\n" +
                     $"MAC: {peer.MacAddress}\n" +
                     $"Status: {peer.Status}\n" +
-                    //$"Last Seen: {peer.LastSeen}\n" +
-                    //$"Missed Heartbeats: {peer.MissedHeartbeats}\n" +
                     $"Graceful Exit: {peer.LeftGracefully}");
 
                 // Add to panel
@@ -1294,11 +1303,20 @@ namespace Assist_TSR.Forms
             }
         }
 
+
         // Display Offline nodes
         private void DisplayOfflineNodes(List<Assist_Service.Models.Peer> peers)
         {
-            // Clear old icons but don't remove the label/buttons
+            // ✅ Remove only peer icons and labels, not static UI (title/buttons)
             foreach (Control ctrl in panel11.Controls.OfType<PictureBox>().ToList())
+            {
+                panel11.Controls.Remove(ctrl);
+                ctrl.Dispose();
+            }
+
+            foreach (Control ctrl in panel11.Controls.OfType<Label>()
+                .Where(l => l.Text != "Offline Nodes" && l.Name != "OfflineNodesLabel")
+                .ToList())
             {
                 panel11.Controls.Remove(ctrl);
                 ctrl.Dispose();
@@ -1311,7 +1329,6 @@ namespace Assist_TSR.Forms
             int iconSize = 40;
             int margin = 10;
             int maxPerRow = (panel11.Width - 20) / (iconSize + margin);
-
             int count = 0;
 
             foreach (var peer in peers.Where(p => p.Status == "Offline"))
@@ -1320,11 +1337,14 @@ namespace Assist_TSR.Forms
                 {
                     Width = iconSize,
                     Height = iconSize,
-                    Image = Properties.Resources.pc_icon1, // add a different icon for offline PCs
+                    Image = Properties.Resources.pc_icon1, // you can change to a gray/offline icon
                     SizeMode = PictureBoxSizeMode.StretchImage,
                     Location = new Point(x, y),
                     Cursor = Cursors.Hand,
-                    Tag = peer.NodeName
+                    Tag = peer.NodeName,
+                    BorderStyle = selectionManager.SelectedPeers.Contains(peer.NodeName)
+                      ? BorderStyle.Fixed3D
+                      : BorderStyle.None
                 };
 
                 pcIcon.MouseClick += (s, e) => selectionManager.ToggleSelection((PictureBox)s);
@@ -1341,7 +1361,7 @@ namespace Assist_TSR.Forms
                     pcIcon.Bottom + 5
                 );
 
-                // Tooltip on hover
+                // Tooltip
                 System.Windows.Forms.ToolTip tooltip = new System.Windows.Forms.ToolTip();
                 tooltip.SetToolTip(pcIcon, $"Node: {peer.NodeName}\n" +
                     $"MAC: {peer.MacAddress}\n" +
@@ -1366,6 +1386,7 @@ namespace Assist_TSR.Forms
                 }
             }
         }
+
 
         private void panel10_Paint(object sender, PaintEventArgs e)
         {
