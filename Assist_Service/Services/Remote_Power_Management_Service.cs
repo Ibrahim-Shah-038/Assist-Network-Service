@@ -12,11 +12,14 @@ using System.Threading.Tasks;
 using Assist_Service.Helpers;
 using Assist_Service.Models;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace Assist_Service.Services
 {
     public class Remote_Power_Management_Service //: IDisposable
     {
+        private List<Peer> _peers;
+        private readonly object _peersLock;
         private bool _isRunning;
         private Thread _listenerThread;
         private UdpClient _udpServer;
@@ -164,11 +167,15 @@ namespace Assist_Service.Services
                     udp.EnableBroadcast = true;
                     IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, GoodByePort);
 
-                    string message = "GOODBYE";
+                    // Include node name and MAC address in the message
+                    string nodeName = Environment.MachineName;
+                    string macAddress = NetworkHelper.GetMacAddress(); // Your method to get MAC
+                    string message = $"GOODBYE:{nodeName}:{macAddress}";
+
                     byte[] data = Encoding.UTF8.GetBytes(message);
                     udp.Send(data, data.Length, ep);
 
-                    PWR_Log.PWR_Log("[Service] Sent GOODBYE broadcast.");
+                    PWR_Log.PWR_Log($"[Service] Sent GOODBYE broadcast: {nodeName}, {macAddress}");
                 }
             }
             catch (Exception ex)
@@ -323,16 +330,61 @@ namespace Assist_Service.Services
                     byte[] data = udpListener.Receive(ref ep);
                     string message = Encoding.UTF8.GetString(data);
 
-                    if (message == "GOODBYE")
+                    if (message.StartsWith("GOODBYE"))
                     {
-                        PWR_Log.PWR_Log($"[Service] Received GOODBYE from {ep.Address}");
-                        PeerFileStorage.MarkPeerOffline(ep.Address.ToString());
+                        string[] parts = message.Split(':');
+                        string nodeName = parts.Length > 1 ? parts[1] : null;
+                        string macAddress = parts.Length > 2 ? parts[2] : null;
+
+                        PWR_Log.PWR_Log($"[Service] Received GOODBYE from {ep.Address} - Node: {nodeName}, MAC: {macAddress}");
+
+                        // Update both file storage AND in-memory peers
+                        UpdateLocalPeerStatus(nodeName, macAddress, ep.Address.ToString());
+                        PeerFileStorage.MarkPeerOffline(ep.Address.ToString(), macAddress, nodeName);
                     }
                 }
                 catch (Exception ex)
                 {
-                    if (isRunning) // avoid spamming logs when shutting down
+                    if (isRunning)
                         PWR_Log.PWR_Log($"[Service] Goodbye listener error: {ex.Message}");
+                }
+            }
+        }
+
+        private void UpdateLocalPeerStatus(string nodeName, string macAddress, string ipAddress)
+        {
+            lock (_peersLock)
+            {
+                Peer peer = null;
+
+                // Use the same search strategy as MarkPeerOffline
+                if (!string.IsNullOrEmpty(macAddress))
+                {
+                    peer = _peers.FirstOrDefault(p =>
+                        !string.IsNullOrEmpty(p.MacAddress) &&
+                        p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (peer == null && !string.IsNullOrEmpty(nodeName))
+                {
+                    peer = _peers.FirstOrDefault(p =>
+                        !string.IsNullOrEmpty(p.NodeName) &&
+                        p.NodeName.Equals(nodeName, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (peer == null && !string.IsNullOrEmpty(ipAddress))
+                {
+                    peer = _peers.FirstOrDefault(p =>
+                        (!string.IsNullOrEmpty(p.IPAddress) && p.IPAddress.Equals(ipAddress)) ||
+                        (p.EndPoint?.Address.ToString() == ipAddress));
+                }
+
+                if (peer != null)
+                {
+                    peer.Status = "Offline";
+                    peer.LastSeen = DateTime.Now;
+                    peer.LeftGracefully = true;
+                    PWR_Log.PWR_Log($"[UpdateLocalPeerStatus] Updated in-memory peer: {peer.NodeName} to Offline");
                 }
             }
         }

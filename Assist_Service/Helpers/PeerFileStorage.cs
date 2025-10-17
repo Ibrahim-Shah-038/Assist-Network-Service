@@ -107,21 +107,65 @@ namespace Assist_Service.Helpers
         }
 
         // ✅ New: Mark a peer offline by IP or MAC
-        public static void MarkPeerOffline(string ipAddress, string macAddress = null)
+        public static void MarkPeerOffline(string ipAddress, string macAddress = null, string nodeName = null)
         {
             var peers = LoadPeersFromJson();
+            Peer peer = null;
 
-            var peer = peers.FirstOrDefault(p =>
-                (p.EndPoint?.Address.ToString() == ipAddress) ||
-                (!string.IsNullOrEmpty(macAddress) &&
-                 !string.IsNullOrEmpty(p.MacAddress) &&
-                 p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase)));
+            // STRATEGY 1: Find by MAC address (most reliable)
+            if (!string.IsNullOrEmpty(macAddress))
+            {
+                peer = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.MacAddress) &&
+                    p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
+
+                if (peer != null)
+                {
+                    //PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer by MAC: {peer.NodeName}");
+                }
+            }
+
+            // STRATEGY 2: Find by Node Name
+            if (peer == null && !string.IsNullOrEmpty(nodeName))
+            {
+                peer = peers.FirstOrDefault(p =>
+                    !string.IsNullOrEmpty(p.NodeName) &&
+                    p.NodeName.Equals(nodeName, StringComparison.OrdinalIgnoreCase));
+
+                if (peer != null)
+                {
+                    //PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer by NodeName: {peer.NodeName}");
+                }
+            }
+
+            // STRATEGY 3: Find by IP Address (fallback)
+            if (peer == null && !string.IsNullOrEmpty(ipAddress))
+            {
+                peer = peers.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.IPAddress) && p.IPAddress.Equals(ipAddress)) ||
+                    (p.EndPoint?.Address.ToString() == ipAddress));
+
+                if (peer != null)
+                {
+                    //PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer by IP: {peer.NodeName}");
+                }
+            }
 
             if (peer != null)
             {
                 peer.Status = "Offline";
                 peer.LastSeen = DateTime.Now;
+                peer.LeftGracefully = true; // Mark as graceful shutdown
                 SavePeersToJson(peers);
+
+                //PWR_Log.PWR_Log($"[MarkPeerOffline] Successfully marked peer offline: {peer.NodeName} ({peer.IPAddress})");
+            }
+            else
+            {
+                //PWR_Log.PWR_Log($"[MarkPeerOffline] Could not find peer to mark offline. IP: {ipAddress}, MAC: {macAddress}, Node: {nodeName}");
+
+                // Log all available peers for debugging
+                //PWR_Log.PWR_Log($"[MarkPeerOffline] Available peers: {string.Join(", ", peers.Select(p => $"{p.NodeName}({p.IPAddress})"))}");
             }
         }
     }
