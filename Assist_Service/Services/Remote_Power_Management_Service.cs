@@ -25,6 +25,7 @@ namespace Assist_Service.Services
         private UdpClient _udpServer;
         private readonly Remote_Power_Log PWR_Log = new Remote_Power_Log();
         private bool _disposed;
+        private NodeConfig _nodeConfig;
 
         private const int ListenPort = 12349;
         private const int GoodByePort = 12350;
@@ -168,7 +169,8 @@ namespace Assist_Service.Services
                     IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, GoodByePort);
 
                     // Include node name and MAC address in the message
-                    string nodeName = Environment.MachineName;
+                    _nodeConfig = LoadNodeConfig();
+                    string nodeName = _nodeConfig.NodeName;
                     string macAddress = NetworkHelper.GetMacAddress(); // Your method to get MAC
                     string message = $"GOODBYE:{nodeName}:{macAddress}";
 
@@ -181,6 +183,34 @@ namespace Assist_Service.Services
             catch (Exception ex)
             {
                 PWR_Log.PWR_Log($"[Service] Broadcast error: {ex.Message}");
+            }
+        }
+
+        private NodeConfig LoadNodeConfig()
+        {
+            try
+            {
+                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeConfig.json");
+
+                if (File.Exists(configPath))
+                {
+                    string json = File.ReadAllText(configPath);
+                    _nodeConfig = JsonConvert.DeserializeObject<NodeConfig>(json);  // ← Changed here
+                    PWR_Log.PWR_Log($"Loaded NodeName: {_nodeConfig.NodeName}");
+                }
+                else
+                {
+                    _nodeConfig = new NodeConfig { NodeName = Environment.MachineName };
+                    PWR_Log.PWR_Log($"Config not found, using: {_nodeConfig.NodeName}");
+                }
+
+                return _nodeConfig;  // ← Added return
+            }
+            catch (Exception ex)
+            {
+                PWR_Log.PWR_Log($"Error loading config: {ex.Message}");
+                _nodeConfig = new NodeConfig { NodeName = Environment.MachineName };
+                return _nodeConfig;  // ← Added return
             }
         }
 
@@ -292,7 +322,11 @@ namespace Assist_Service.Services
                 PWR_Log.PWR_Log($"⚡ Sending WOL packet to {mac}...");
                 try
                 {
-                    WakeOnLan.SendMagicPacket(mac);
+                    // Format MAC address to required format (XX:XX:XX:XX:XX:XX)
+                    string formattedMac = FormatMacAddress(mac);
+                    PWR_Log.PWR_Log($"📡 Formatted MAC: {formattedMac}");
+
+                    WakeOnLan.SendMagicPacket(formattedMac);
                     PWR_Log.PWR_Log($"✅ WOL packet sent successfully to {mac}");
                 }
                 catch (Exception ex)
@@ -304,6 +338,25 @@ namespace Assist_Service.Services
             {
                 PWR_Log.PWR_Log($"⚠ Unknown command received: {command}");
             }
+        }
+
+        private string FormatMacAddress(string mac)
+        {
+            // Remove any existing separators (colons, hyphens, spaces)
+            mac = mac.Replace(":", "").Replace("-", "").Replace(" ", "");
+
+            // Validate length
+            if (mac.Length != 12)
+                throw new ArgumentException($"Invalid MAC address length: {mac.Length}. Expected 12 characters.");
+
+            // Validate hex characters
+            if (!System.Text.RegularExpressions.Regex.IsMatch(mac, "^[0-9A-Fa-f]{12}$"))
+                throw new ArgumentException("MAC address contains invalid characters. Only hex digits allowed.");
+
+            // Insert colons every 2 characters: 68E43B308203 -> 68:E4:3B:30:82:03
+            return string.Join(":",
+                Enumerable.Range(0, 6)
+                .Select(i => mac.Substring(i * 2, 2).ToUpper()));
         }
 
         // -------------------------------
@@ -357,7 +410,6 @@ namespace Assist_Service.Services
             {
                 Peer peer = null;
 
-                // Use the same search strategy as MarkPeerOffline
                 if (!string.IsNullOrEmpty(macAddress))
                 {
                     peer = _peers.FirstOrDefault(p =>
@@ -376,7 +428,7 @@ namespace Assist_Service.Services
                 {
                     peer = _peers.FirstOrDefault(p =>
                         (!string.IsNullOrEmpty(p.IPAddress) && p.IPAddress.Equals(ipAddress)) ||
-                        (p.EndPoint?.Address.ToString() == ipAddress));
+                        (p.EndPoint != null && p.EndPoint.Address.ToString() == ipAddress)); // FIX HERE
                 }
 
                 if (peer != null)

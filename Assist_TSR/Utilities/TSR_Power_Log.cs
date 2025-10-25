@@ -6,9 +6,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Assist_Service.Helpers
+namespace Assist_TSR.Utilities
 {
-    public class Remote_Power_Log
+    public class TSR_Power_Log
     {
         public void PWR_Log(string message)
         {
@@ -16,7 +16,7 @@ namespace Assist_Service.Helpers
             System.Diagnostics.Debug.WriteLine(message);
 
             // Optional: Write to a log file
-            string logPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "service_power_management.log");
+            string logPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "tsr_power_management.log");
             File.AppendAllText(logPath, $"{DateTime.Now}: {message}{Environment.NewLine}");
         }
     }

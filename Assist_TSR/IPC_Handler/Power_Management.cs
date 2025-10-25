@@ -39,7 +39,7 @@ namespace Assist_Service.IPC_Handler
 
         
         private const int BroadcastPort = 12349;
-        private Remote_Power_Log PWR_Log = new Remote_Power_Log();
+        private TSR_Power_Log PWR_Log = new TSR_Power_Log();
         private UdpClient _udpSender;
 
         private string filePath;

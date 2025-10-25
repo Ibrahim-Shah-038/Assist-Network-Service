@@ -52,6 +52,9 @@ namespace Assist_Service
 
             try
             {
+                // Clear old data for this node before starting
+                PeerFileStorage.ClearAllNodes();
+
                 Logger.Log("Loading node configuration...");
                 _nodeConfig = FileHelper.ReadJsonWithRetry<NodeConfig>(
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeConfig.json"));
@@ -132,6 +135,7 @@ namespace Assist_Service
                 _pipeService.Start();
                 monitor_Closure_Thread.Start();
                 _AppClosureListenerThread.Start();
+                
                 Logger.Log("All services started successfully.");
 
                 // Remote Power Management

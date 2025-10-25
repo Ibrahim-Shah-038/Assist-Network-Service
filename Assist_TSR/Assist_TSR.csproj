@@ -135,6 +135,7 @@
     <Compile Include="Utilities\PeerSelectionManager.cs" />
     <Compile Include="Utilities\Timer_.cs" />
     <Compile Include="Utilities\TSR_Logging.cs" />
+    <Compile Include="Utilities\TSR_Power_Log.cs" />
     <EmbeddedResource Include="Forms\Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
