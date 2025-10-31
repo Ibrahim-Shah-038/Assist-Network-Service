@@ -29,13 +29,28 @@ namespace Assist_TSR
                 // Add to startup registry if not already there
                 EnsureStartupEntry();
 
-                // Wait for service to start (max 90 seconds)
-                WaitForServiceToStart("Assist_Service", TimeSpan.FromSeconds(90));
-
                 // Original code - unchanged
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new Forms.Form1());
+
+                // Create and show the form first (so system tray icon appears)
+                Forms.Form1 mainForm = new Forms.Form1();
+
+                // Wait for service in a background thread so UI remains responsive
+                Thread serviceWaitThread = new Thread(() => {
+                    WaitForServiceToStart("Assist_Service", TimeSpan.FromSeconds(90));
+
+                    // After service starts, show notification
+                    mainForm.Invoke((MethodInvoker)delegate {
+                        // You can add a notification here if needed
+                        // mainForm.notifyIcon.ShowBalloonTip(2000, "Assist TSR", "Service connected.", ToolTipIcon.Info);
+                    });
+                });
+                serviceWaitThread.IsBackground = true;
+                serviceWaitThread.Start();
+
+                // Run the application (form will show system tray icon immediately)
+                Application.Run(mainForm);
 
                 GC.KeepAlive(mutex);
             }
