@@ -9,6 +9,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assist_TSR", "Assist_TSR\As
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Assist_Setup", "Assist_Setup\Assist_Setup.vdproj", "{B0FC534F-DB60-4902-9750-DD280E23541F}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D6969386-F67C-4D4D-9B14-076B3962F543}"
+	ProjectSection(SolutionItems) = preProject
+		AddFirewallRules.ps1 = AddFirewallRules.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
