@@ -2,50 +2,55 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
-using Assist_Service.Models;
 using System.Reflection;
 using System.Net;
+using Assist_Service.Models;
+using Newtonsoft.Json; // ✅ Using only Newtonsoft.Json
 
 namespace Assist_Service.Helpers
 {
-    public static class PeerFileStorage
+    public class PeerFileStorage
     {
         private static readonly string FilePath = Path.Combine(
             Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
             "peers.json"
         );
 
-        // Load existing peers
+        private readonly static Remote_Power_Log PWR_Log = new Remote_Power_Log();
+
+        // ✅ Load existing peers
         public static List<Peer> LoadPeersFromJson()
         {
-            if (!File.Exists(FilePath)) return new List<Peer>();
+            if (!File.Exists(FilePath))
+            {
+                return new List<Peer>();
+            }
 
             try
             {
                 string json = File.ReadAllText(FilePath);
-                return JsonSerializer.Deserialize<List<Peer>>(json) ?? new List<Peer>();
+                var peers = JsonConvert.DeserializeObject<List<Peer>>(json);
+                return peers ?? new List<Peer>();
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[LoadPeersFromJson] Error reading file: {ex.Message}");
                 return new List<Peer>();
             }
         }
 
+        // ✅ Clear all nodes (empty file)
         public static void ClearAllNodes()
         {
             try
             {
-                // Check if file exists
                 if (!File.Exists(FilePath))
                 {
                     Console.WriteLine($"[ClearAllNodes] File not found: {FilePath}");
                     return;
                 }
 
-                // Overwrite with an empty JSON array
                 File.WriteAllText(FilePath, "[]");
-
                 Console.WriteLine("[ClearAllNodes] All node entries cleared successfully.");
             }
             catch (Exception ex)
@@ -54,27 +59,32 @@ namespace Assist_Service.Helpers
             }
         }
 
-        // Save full peer list (replace file)
+        // ✅ Save all peers back to file
         public static void SavePeersToJson(List<Peer> peers)
         {
-            string json = JsonSerializer.Serialize(peers, new JsonSerializerOptions
+            try
             {
-                WriteIndented = true
-            });
-
-            File.WriteAllText(FilePath, json);
+                string json = JsonConvert.SerializeObject(peers, Formatting.Indented);
+                File.WriteAllText(FilePath, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SavePeersToJson] Error saving peers: {ex.Message}");
+            }
         }
 
-        // Update or add a peer and save immediately
+        // ✅ Add or update a peer
         public static void UpdateAndSavePeer(Peer peer, string originalMacAddress = null, string originalNodeName = null)
         {
+            if (peer == null) return;
+
             if (peer.EndPoint != null)
                 peer.IPAddress = peer.EndPoint.Address.ToString();
 
             var peers = LoadPeersFromJson();
             Peer existing = null;
 
-            // Method 1: Use original MAC if provided
+            // Search by original MAC
             if (!string.IsNullOrEmpty(originalMacAddress))
             {
                 existing = peers.FirstOrDefault(p =>
@@ -82,7 +92,7 @@ namespace Assist_Service.Helpers
                     p.MacAddress.Equals(originalMacAddress, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Method 2: Use original NodeName if provided
+            // Search by original node name
             if (existing == null && !string.IsNullOrEmpty(originalNodeName))
             {
                 existing = peers.FirstOrDefault(p =>
@@ -90,7 +100,7 @@ namespace Assist_Service.Helpers
                     p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Method 3: Fallback to current MAC
+            // Search by current MAC
             if (existing == null && !string.IsNullOrEmpty(peer.MacAddress))
             {
                 existing = peers.FirstOrDefault(p =>
@@ -98,7 +108,7 @@ namespace Assist_Service.Helpers
                     p.MacAddress.Equals(peer.MacAddress, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Method 4: Fallback to current NodeName
+            // Search by current node name
             if (existing == null && !string.IsNullOrEmpty(peer.NodeName))
             {
                 existing = peers.FirstOrDefault(p =>
@@ -106,9 +116,9 @@ namespace Assist_Service.Helpers
                     p.NodeName.Equals(peer.NodeName, StringComparison.OrdinalIgnoreCase));
             }
 
+            // Update existing or add new peer
             if (existing != null)
             {
-                // Update all fields
                 existing.NodeName = peer.NodeName;
                 existing.IPAddress = peer.IPAddress;
                 existing.MacAddress = peer.MacAddress;
@@ -128,39 +138,50 @@ namespace Assist_Service.Helpers
             SavePeersToJson(peers);
         }
 
-        // ✅ New: Mark a peer offline by IP or MAC
-        public static void MarkPeerOffline(string ipAddress, string macAddress = null, string nodeName = null)
+        // ✅ Mark a peer offline upon receiving a "goodbye" message
+        public static void UpdatePeerStatusOnGoodbye(string macAddress, string nodeName)
         {
-            var peers = LoadPeersFromJson();
-            Peer peer = null;
-
-            if (!string.IsNullOrEmpty(macAddress))
+            try
             {
-                peer = peers.FirstOrDefault(p =>
-                    !string.IsNullOrEmpty(p.MacAddress) &&
+                if (!File.Exists(FilePath))
+                {
+                    PWR_Log.PWR_Log($"[Service] peers.json file not found.");
+                    return;
+                }
+
+                string jsonContent = File.ReadAllText(FilePath);
+                var peers = JsonConvert.DeserializeObject<List<Peer>>(jsonContent);
+
+                if (peers == null || peers.Count == 0)
+                {
+                    PWR_Log.PWR_Log($"[Service] No peers found in peers.json");
+                    return;
+                }
+
+                // Find the peer by MAC address (case-insensitive)
+                var peer = peers.FirstOrDefault(p =>
                     p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
-            }
 
-            if (peer == null && !string.IsNullOrEmpty(nodeName))
-            {
-                peer = peers.FirstOrDefault(p =>
-                    !string.IsNullOrEmpty(p.NodeName) &&
-                    p.NodeName.Equals(nodeName, StringComparison.OrdinalIgnoreCase));
-            }
+                if (peer != null)
+                {
+                    peer.Status = "Offline";
+                    peer.LeftGracefully = true;
+                    peer.LastSeen = DateTime.UtcNow;
 
-            if (peer == null && !string.IsNullOrEmpty(ipAddress))
-            {
-                peer = peers.FirstOrDefault(p =>
-                    (!string.IsNullOrEmpty(p.IPAddress) && p.IPAddress.Equals(ipAddress)) ||
-                    (p.EndPoint != null && p.EndPoint.Address.ToString() == ipAddress)); // FIX HERE
-            }
+                    string updatedJson = JsonConvert.SerializeObject(peers, Formatting.Indented);
+                    File.WriteAllText(FilePath, updatedJson);
+                    UpdateAndSavePeer(peer, macAddress, nodeName);
 
-            if (peer != null)
+                    PWR_Log.PWR_Log($"[Service] Updated peer status to Offline - Node: {nodeName}, MAC: {macAddress}");
+                }
+                else
+                {
+                    PWR_Log.PWR_Log($"[Service] Peer with MAC address {macAddress} not found in peers.json");
+                }
+            }
+            catch (Exception ex)
             {
-                peer.Status = "Offline";
-                peer.LastSeen = DateTime.Now;
-                peer.LeftGracefully = true;
-                SavePeersToJson(peers);
+                PWR_Log.PWR_Log($"[Service] Error updating peer status: {ex.Message}");
             }
         }
     }
