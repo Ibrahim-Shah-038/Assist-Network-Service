@@ -392,13 +392,13 @@ namespace Assist_Service.Services
                         PWR_Log.PWR_Log($"[Service] Received GOODBYE from {ep.Address} - Node: {nodeName}, MAC: {macAddress}");
 
                         // Update both file storage AND in-memory peers
-                        PeerFileStorage.UpdatePeerStatusOnGoodbye(macAddress, nodeName);
+                        PeerFileStorage.MarkPeerOffline(macAddress, nodeName);
                     }
                 }
                 catch (Exception ex)
                 {
                     if (isRunning)
-                        PWR_Log.PWR_Log($"[Service] Goodbye listener error: {ex.Message}");
+                        PWR_Log.PWR_Log($"[Service] Goodbye listener error: {ex}");
                 }
             }
         }

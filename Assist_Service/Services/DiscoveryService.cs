@@ -16,10 +16,10 @@ namespace Assist_Service.Services
 {
     public class DiscoveryService
     {
-        private readonly UdpClient _udpClient;
-        private readonly NodeConfig _nodeConfig;
-        private  List<Peer> _peers;
-        private readonly object _peersLock;
+        public readonly UdpClient _udpClient;
+        public readonly NodeConfig _nodeConfig;
+        public  List<Peer> _peers;
+        public readonly object _peersLock;
         private bool _isRunning;
 
         public const int BroadcastPort = 12345;
@@ -161,124 +161,89 @@ namespace Assist_Service.Services
             {
                 try
                 {
-                    // Ensure _peers is always initialized
                     if (_peers == null)
-                    {
                         _peers = new List<Peer>();
-                    }
 
-                    // Load from file to sync with latest data
                     if (File.Exists(_peersFile))
                     {
                         var json = File.ReadAllText(_peersFile);
                         var filePeers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
 
-                        // Merge file data with current _peers to ensure consistency
                         foreach (var filePeer in filePeers)
                         {
-                            var existingInMemory = _peers.FirstOrDefault(p =>
-                                (!string.IsNullOrEmpty(p.MacAddress) && !string.IsNullOrEmpty(filePeer.MacAddress) &&
+                            var existing = _peers.FirstOrDefault(p =>
+                                (!string.IsNullOrEmpty(p.MacAddress) &&
                                  p.MacAddress.Equals(filePeer.MacAddress, StringComparison.OrdinalIgnoreCase)) ||
-                                (!string.IsNullOrEmpty(p.NodeName) && !string.IsNullOrEmpty(filePeer.NodeName) &&
+                                (!string.IsNullOrEmpty(p.NodeName) &&
                                  p.NodeName.Equals(filePeer.NodeName, StringComparison.OrdinalIgnoreCase)));
 
-                            if (existingInMemory == null)
-                            {
+                            if (existing == null)
                                 _peers.Add(filePeer);
-                            }
                             else
                             {
-                                // Update existing in-memory peer with file data
-                                existingInMemory.NodeName = filePeer.NodeName;
-                                existingInMemory.IPAddress = filePeer.IPAddress;
-                                existingInMemory.MacAddress = filePeer.MacAddress;
-                                existingInMemory.Status = filePeer.Status;
-                                existingInMemory.LastSeen = filePeer.LastSeen;
-                                existingInMemory.LeftGracefully = filePeer.LeftGracefully;
-                                existingInMemory.MissedHeartbeats = filePeer.MissedHeartbeats;
-                                existingInMemory.EndPoint = filePeer.EndPoint;
+                                existing.IPAddress = filePeer.IPAddress;
+                                existing.Status = filePeer.Status;
+                                existing.LastSeen = filePeer.LastSeen;
+                                existing.LeftGracefully = filePeer.LeftGracefully;
+                                existing.MissedHeartbeats = filePeer.MissedHeartbeats;
                             }
                         }
                     }
 
-                    Peer existingPeer = null;
+                    Peer peer = null;
 
-                    // STRATEGY 1: Find by MAC address first (most reliable for renames)
-                    if (!string.IsNullOrEmpty(macAddress))
+                    // Match logic
+                    peer = _peers.FirstOrDefault(p =>
+                        (!string.IsNullOrEmpty(p.MacAddress) && p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrEmpty(originalNodeName) && p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase)) ||
+                        p.NodeName.Equals(peerName, StringComparison.OrdinalIgnoreCase));
+
+                    if (peer != null)
                     {
-                        existingPeer = _peers.FirstOrDefault(p =>
-                            !string.IsNullOrEmpty(p.MacAddress) &&
-                            p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
-                    }
+                        bool wasOffline = peer.Status != "Online";
 
-                    // STRATEGY 2: Find by original node name (if provided for renames)
-                    if (existingPeer == null && !string.IsNullOrEmpty(originalNodeName))
-                    {
-                        existingPeer = _peers.FirstOrDefault(p =>
-                            !string.IsNullOrEmpty(p.NodeName) &&
-                            p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase));
-                    }
-
-                    // STRATEGY 3: Find by current node name (fallback)
-                    if (existingPeer == null)
-                    {
-                        existingPeer = _peers.FirstOrDefault(p =>
-                            !string.IsNullOrEmpty(p.NodeName) &&
-                            p.NodeName.Equals(peerName, StringComparison.OrdinalIgnoreCase));
-                    }
-
-                    // Use peer-reported IP (not endpoint.Address, which may be 127.0.0.1)
-                    string newIp = ipAddress;
-
-                    if (existingPeer != null)
-                    {
-                        string oldName = existingPeer.NodeName;
-                        bool wasRenamed = !string.Equals(oldName, peerName, StringComparison.OrdinalIgnoreCase);
-
-                        if (existingPeer.IPAddress != newIp)
+                        // 🧠 Respect LeftGracefully flag
+                        if (peer.LeftGracefully)
                         {
-                            Console.WriteLine($"[UpdatePeer] Peer {oldName} updated IP: {existingPeer.IPAddress} -> {newIp}");
-                            existingPeer.IPAddress = newIp;
+                            Console.WriteLine($"[UpdatePeer] Ignoring update for {peerName} — peer left gracefully.");
+                            return peer; // do not mark Online again
                         }
 
-                        if (wasRenamed)
-                        {
-                            Console.WriteLine($"[UpdatePeer] Peer renamed: {oldName} -> {peerName}");
-                        }
+                        peer.NodeName = peerName;
+                        peer.IPAddress = ipAddress;
+                        peer.MacAddress = macAddress;
+                        peer.LastSeen = DateTime.UtcNow;
+                        peer.Status = "Online";
+                        peer.MissedHeartbeats = 0;
+                        peer.EndPoint = endpoint;
 
-                        existingPeer.NodeName = peerName;
-                        existingPeer.MacAddress = macAddress;
-                        existingPeer.LastSeen = DateTime.UtcNow;
-                        existingPeer.Status = "Online";
-                        existingPeer.EndPoint = endpoint;
-                        existingPeer.MissedHeartbeats = 0;
-                        existingPeer.LeftGracefully = false;
+                        if (wasOffline)
+                            Console.WriteLine($"[UpdatePeer] Peer {peerName} is back online.");
+
+                        Console.WriteLine($"[UpdatePeer] Updated peer: {peerName} ({ipAddress})");
                     }
                     else
                     {
-                        var newPeer = new Peer
+                        // New peer (fresh join)
+                        peer = new Peer
                         {
                             NodeName = peerName,
                             EndPoint = endpoint,
-                            IPAddress = newIp,
+                            IPAddress = ipAddress,
                             MacAddress = macAddress,
                             Status = "Online",
                             LastSeen = DateTime.UtcNow,
                             MissedHeartbeats = 0,
                             LeftGracefully = false
                         };
-                        _peers.Add(newPeer);
 
-                        Console.WriteLine($"[UpdatePeer] New peer discovered: {peerName} @ {newIp}:{endpoint.Port} (MAC: {macAddress})");
-                        existingPeer = newPeer;
+                        _peers.Add(peer);
+                        Console.WriteLine($"[UpdatePeer] New peer discovered: {peerName} @ {ipAddress}");
                     }
 
-                    // Save to file and ensure _peers is consistent
-                    var updatedJson = JsonConvert.SerializeObject(_peers, Formatting.Indented);
-                    File.WriteAllText(_peersFile, updatedJson);
+                    File.WriteAllText(_peersFile, JsonConvert.SerializeObject(_peers, Formatting.Indented));
 
-                    Console.WriteLine($"[UpdatePeer] Successfully updated _peers list. Total peers: {_peers.Count}");
-                    return existingPeer;
+                    return peer;
                 }
                 catch (Exception ex)
                 {
@@ -289,37 +254,82 @@ namespace Assist_Service.Services
         }
 
 
-
         // Extended version: updates in-memory + persists
         // Extended version: updates in-memory + persists with original identifiers
         private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
         {
             try
             {
-                // First, try to find the original node name before updating
                 string originalNodeName = FindOriginalNodeName(macAddress, peerName);
-
                 Console.WriteLine($"[UpdatePeerAndPersist] Processing: {peerName}, Original: {originalNodeName}, MAC: {macAddress}");
 
-                var peer = UpdatePeer(peerName, endpoint, ipAddress, macAddress, originalNodeName);
-
-                if (peer != null)
+                // Load the latest peers from file first
+                List<Peer> filePeers = new List<Peer>();
+                if (File.Exists(_peersFile))
                 {
-                    // Pass original identifiers to prevent duplicates during renames
-                    PeerFileStorage.UpdateAndSavePeer(peer, originalMacAddress: macAddress, originalNodeName: originalNodeName);
+                    var json = File.ReadAllText(_peersFile);
+                    filePeers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
+                }
 
-                    Console.WriteLine($"[UpdatePeerAndPersist] Successfully processed peer: {peer.NodeName}");
+                // Try to find existing peer in file
+                var existingPeer = filePeers.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.MacAddress) &&
+                     p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.NodeName) &&
+                     p.NodeName.Equals(peerName, StringComparison.OrdinalIgnoreCase)));
+
+                if (existingPeer != null)
+                {
+                    // Respect graceful leave (don’t flip back to Online)
+                    if (existingPeer.LeftGracefully)
+                    {
+                        Console.WriteLine($"[UpdatePeerAndPersist] Skipping update for '{peerName}' (LeftGracefully=true, Status={existingPeer.Status}).");
+                        return;
+                    }
+
+                    // Normal update (peer is active)
+                    existingPeer.NodeName = peerName;
+                    existingPeer.MacAddress = macAddress;
+                    existingPeer.IPAddress = ipAddress;
+                    existingPeer.EndPoint = endpoint;
+                    existingPeer.LastSeen = DateTime.UtcNow;
+                    existingPeer.Status = "Online";
+                    existingPeer.LeftGracefully = false;
+                    existingPeer.MissedHeartbeats = 0;
+
+                    Console.WriteLine($"[UpdatePeerAndPersist] Updated existing peer '{peerName}' -> Status=Online.");
                 }
                 else
                 {
-                    Console.WriteLine($"[UpdatePeerAndPersist] Failed to update peer: {peerName}");
+                    // New peer discovery (not in file)
+                    var newPeer = new Peer
+                    {
+                        NodeName = peerName,
+                        EndPoint = endpoint,
+                        IPAddress = ipAddress,
+                        MacAddress = macAddress,
+                        Status = "Online",
+                        LastSeen = DateTime.UtcNow,
+                        LeftGracefully = false,
+                        MissedHeartbeats = 0
+                    };
+
+                    filePeers.Add(newPeer);
+                    Console.WriteLine($"[UpdatePeerAndPersist] Added new peer '{peerName}' to list.");
                 }
+
+                // Save updated peers back to file
+                var updatedJson = JsonConvert.SerializeObject(filePeers, Formatting.Indented);
+                File.WriteAllText(_peersFile, updatedJson);
+
+                Console.WriteLine($"[UpdatePeerAndPersist] Successfully persisted peers.json. Total: {filePeers.Count}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UpdatePeerAndPersist] Error: {ex.Message}");
+                Console.WriteLine($"[UpdatePeerAndPersist] ERROR: {ex}");
             }
         }
+
 
         private string FindOriginalNodeName(string macAddress, string currentPeerName)
         {
@@ -364,6 +374,7 @@ namespace Assist_Service.Services
             Console.WriteLine($"[FindOriginalNodeName] Using current name as original: {currentPeerName}");
             return currentPeerName; // Fallback to current name
         }
+
 
         private void SendAcknowledgment(string peerName, IPEndPoint remoteEP)
         {

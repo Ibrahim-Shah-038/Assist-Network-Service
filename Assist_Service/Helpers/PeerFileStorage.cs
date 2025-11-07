@@ -9,12 +9,16 @@ using Newtonsoft.Json; // ✅ Using only Newtonsoft.Json
 
 namespace Assist_Service.Helpers
 {
+
     public class PeerFileStorage
     {
         private static readonly string FilePath = Path.Combine(
             Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
             "peers.json"
         );
+
+        //private static readonly object _peersLock;
+        private static List<Peer> _peers = new List<Peer>();
 
         private readonly static Remote_Power_Log PWR_Log = new Remote_Power_Log();
 
@@ -139,50 +143,150 @@ namespace Assist_Service.Helpers
         }
 
         // ✅ Mark a peer offline upon receiving a "goodbye" message
-        public static void UpdatePeerStatusOnGoodbye(string macAddress, string nodeName)
+        public static void MarkPeerOffline(string macAddress, string nodeName)
         {
-            try
+            PWR_Log.PWR_Log($"[MarkPeerOffline] ENTRY. macAddress='{macAddress ?? "null"}', nodeName='{nodeName ?? "null"}'");
+
+            lock (Service1._peersLock)
             {
-                if (!File.Exists(FilePath))
+                try
                 {
-                    PWR_Log.PWR_Log($"[Service] peers.json file not found.");
-                    return;
+                    PWR_Log.PWR_Log("[MarkPeerOffline] Acquired lock");
+
+                    // Initialize if necessary
+                    if (_peers == null)
+                    {
+                        PWR_Log.PWR_Log("[MarkPeerOffline] _peers is null -> initializing new list");
+                        _peers = new List<Peer>();
+                    }
+                    else
+                    {
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] _peers already initialized. Current count: {_peers.Count}");
+                    }
+
+                    // Load peers from file
+                    if (File.Exists(FilePath))
+                    {
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] peers file exists at: {FilePath}");
+
+                        var json = File.ReadAllText(FilePath);
+                        if (json == null)
+                        {
+                            PWR_Log.PWR_Log("[MarkPeerOffline] ReadFile returned null json");
+                        }
+                        else
+                        {
+                            PWR_Log.PWR_Log($"[MarkPeerOffline] ReadFile length: {json.Length} chars");
+                            // Log a preview (first 500 chars) to avoid huge logs
+                            var previewLen = Math.Min(500, json.Length);
+                            PWR_Log.PWR_Log($"[MarkPeerOffline] peers.json preview: {json.Substring(0, previewLen)}{(json.Length > previewLen ? "..." : "")}");
+                        }
+
+                        var filePeers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Deserialized filePeers count: {filePeers.Count}");
+
+                        int idx = 0;
+                        foreach (var filePeer in filePeers)
+                        {
+                            PWR_Log.PWR_Log($"[MarkPeerOffline] Inspecting filePeer index={idx}");
+
+                            if (filePeer == null)
+                            {
+                                PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}] is null -> skipping");
+                                idx++;
+                                continue;
+                            }
+
+                            PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}] NodeName='{filePeer.NodeName ?? "null"}', MacAddress='{filePeer.MacAddress ?? "null"}'");
+
+                            if (string.IsNullOrEmpty(filePeer.MacAddress))
+                            {
+                                PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}].MacAddress is null/empty -> skipping");
+                                idx++;
+                                continue;
+                            }
+
+                            bool alreadyExists = _peers.Any(p =>
+                                p != null &&
+                                !string.IsNullOrEmpty(p.MacAddress) &&
+                                string.Equals(p.MacAddress, filePeer.MacAddress, StringComparison.OrdinalIgnoreCase));
+
+                            PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}] alreadyExistsInMemory={alreadyExists}");
+
+                            if (!alreadyExists)
+                            {
+                                _peers.Add(filePeer);
+                                PWR_Log.PWR_Log($"[MarkPeerOffline] Added filePeer[{idx}] to in-memory list. New _peers count: {_peers.Count}");
+                            }
+
+                            idx++;
+                        }
+                    }
+                    else
+                    {
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] peers file does not exist at: {FilePath}");
+                    }
+
+                    // Validate inputs before proceeding
+                    if (string.IsNullOrEmpty(macAddress) && string.IsNullOrEmpty(nodeName))
+                    {
+                        PWR_Log.PWR_Log("[MarkPeerOffline] Both macAddress and nodeName are null/empty -> nothing to do. EXIT");
+                        return;
+                    }
+
+                    PWR_Log.PWR_Log($"[MarkPeerOffline] Searching for peer. Current in-memory count: {_peers.Count}");
+
+                    // Find target peer safely
+                    var peer = _peers.FirstOrDefault(p =>
+                        p != null &&
+                        (
+                            (!string.IsNullOrEmpty(macAddress) &&
+                             !string.IsNullOrEmpty(p.MacAddress) &&
+                             string.Equals(p.MacAddress, macAddress, StringComparison.OrdinalIgnoreCase))
+                            ||
+                            (!string.IsNullOrEmpty(nodeName) &&
+                             !string.IsNullOrEmpty(p.NodeName) &&
+                             string.Equals(p.NodeName, nodeName, StringComparison.OrdinalIgnoreCase))
+                        ));
+
+                    if (peer != null)
+                    {
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer. NodeName='{peer.NodeName ?? "null"}', MacAddress='{peer.MacAddress ?? "null"}', Status='{peer.Status ?? "null"}'");
+
+                        peer.Status = "Offline";
+                        peer.LeftGracefully = true;
+                        peer.LastSeen = DateTime.UtcNow;
+
+                        // Persist the updated list to disk
+                        PWR_Log.PWR_Log("[MarkPeerOffline] Serializing updated _peers to JSON");
+                        var updatedJson = JsonConvert.SerializeObject(_peers, Formatting.Indented);
+
+                        // Optional: write to a temp file then move for atomicity
+                        var tempFile = FilePath + ".tmp";
+                        File.WriteAllText(tempFile, updatedJson);
+                        File.Copy(tempFile, FilePath, true);
+                        File.Delete(tempFile);
+
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Persisted updated peers.json. Total peers saved: {_peers.Count}");
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Marked peer Offline - Node: {peer.NodeName}, MAC: {peer.MacAddress}");
+                    }
+                    else
+                    {
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Peer not found to mark Offline - Node: {nodeName ?? "null"}, MAC: {macAddress ?? "null"}");
+                    }
                 }
-
-                string jsonContent = File.ReadAllText(FilePath);
-                var peers = JsonConvert.DeserializeObject<List<Peer>>(jsonContent);
-
-                if (peers == null || peers.Count == 0)
+                catch (Exception ex)
                 {
-                    PWR_Log.PWR_Log($"[Service] No peers found in peers.json");
-                    return;
+                    // Full exception with stack trace
+                    PWR_Log.PWR_Log($"[MarkPeerOffline] ERROR: {ex}");
                 }
-
-                // Find the peer by MAC address (case-insensitive)
-                var peer = peers.FirstOrDefault(p =>
-                    p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
-
-                if (peer != null)
+                finally
                 {
-                    peer.Status = "Offline";
-                    peer.LeftGracefully = true;
-                    peer.LastSeen = DateTime.UtcNow;
-
-                    string updatedJson = JsonConvert.SerializeObject(peers, Formatting.Indented);
-                    File.WriteAllText(FilePath, updatedJson);
-                    UpdateAndSavePeer(peer, macAddress, nodeName);
-
-                    PWR_Log.PWR_Log($"[Service] Updated peer status to Offline - Node: {nodeName}, MAC: {macAddress}");
+                    PWR_Log.PWR_Log("[MarkPeerOffline] Releasing lock and EXIT");
                 }
-                else
-                {
-                    PWR_Log.PWR_Log($"[Service] Peer with MAC address {macAddress} not found in peers.json");
-                }
-            }
-            catch (Exception ex)
-            {
-                PWR_Log.PWR_Log($"[Service] Error updating peer status: {ex.Message}");
             }
         }
+
+
     }
 }

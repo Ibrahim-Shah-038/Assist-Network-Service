@@ -16,14 +16,14 @@ namespace Assist_Service
 {
     public partial class Service1 : ServiceBase
     {
-        private NodeConfig _nodeConfig;
+        public static NodeConfig _nodeConfig;
         private List<RuleConfig> _rules;
-        private List<Peer> _peers = new List<Peer>();
-        private readonly object _peersLock = new object();
+        public static List<Peer> _peers = new List<Peer>();
+        public static readonly object _peersLock = new object();
         private bool _isRunning;
         private string _ruleFileAddress;
 
-        private UdpClient _udpClient;
+        public static UdpClient _udpClient;
         private DiscoveryService _discoveryService;
         private ApplicationMonitorService _appMonitorService;
         private PipeCommunicationService _pipeService;
