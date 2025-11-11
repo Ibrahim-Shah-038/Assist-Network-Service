@@ -153,7 +153,6 @@ namespace Assist_Service.Helpers
                 {
                     PWR_Log.PWR_Log("[MarkPeerOffline] Acquired lock");
 
-                    // Initialize if necessary
                     if (_peers == null)
                     {
                         PWR_Log.PWR_Log("[MarkPeerOffline] _peers is null -> initializing new list");
@@ -164,7 +163,7 @@ namespace Assist_Service.Helpers
                         PWR_Log.PWR_Log($"[MarkPeerOffline] _peers already initialized. Current count: {_peers.Count}");
                     }
 
-                    // Load peers from file
+                    // Load peers from file (merge)
                     if (File.Exists(FilePath))
                     {
                         PWR_Log.PWR_Log($"[MarkPeerOffline] peers file exists at: {FilePath}");
@@ -177,7 +176,6 @@ namespace Assist_Service.Helpers
                         else
                         {
                             PWR_Log.PWR_Log($"[MarkPeerOffline] ReadFile length: {json.Length} chars");
-                            // Log a preview (first 500 chars) to avoid huge logs
                             var previewLen = Math.Min(500, json.Length);
                             PWR_Log.PWR_Log($"[MarkPeerOffline] peers.json preview: {json.Substring(0, previewLen)}{(json.Length > previewLen ? "..." : "")}");
                         }
@@ -197,8 +195,6 @@ namespace Assist_Service.Helpers
                                 continue;
                             }
 
-                            PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}] NodeName='{filePeer.NodeName ?? "null"}', MacAddress='{filePeer.MacAddress ?? "null"}'");
-
                             if (string.IsNullOrEmpty(filePeer.MacAddress))
                             {
                                 PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}].MacAddress is null/empty -> skipping");
@@ -210,8 +206,6 @@ namespace Assist_Service.Helpers
                                 p != null &&
                                 !string.IsNullOrEmpty(p.MacAddress) &&
                                 string.Equals(p.MacAddress, filePeer.MacAddress, StringComparison.OrdinalIgnoreCase));
-
-                            PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}] alreadyExistsInMemory={alreadyExists}");
 
                             if (!alreadyExists)
                             {
@@ -253,15 +247,21 @@ namespace Assist_Service.Helpers
                     {
                         PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer. NodeName='{peer.NodeName ?? "null"}', MacAddress='{peer.MacAddress ?? "null"}', Status='{peer.Status ?? "null"}'");
 
+                        // --- KEEP EXISTING BEHAVIOR ---
                         peer.Status = "Offline";
                         peer.LeftGracefully = true;
                         peer.LastSeen = DateTime.UtcNow;
+
+                        // --- NEW LOGIC: mark when it left gracefully ---
+                        peer.LeftGracefullyAt = DateTime.UtcNow;
+
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Marking LeftGracefullyAt={peer.LeftGracefullyAt:O}");
 
                         // Persist the updated list to disk
                         PWR_Log.PWR_Log("[MarkPeerOffline] Serializing updated _peers to JSON");
                         var updatedJson = JsonConvert.SerializeObject(_peers, Formatting.Indented);
 
-                        // Optional: write to a temp file then move for atomicity
+                        // Safer atomic write
                         var tempFile = FilePath + ".tmp";
                         File.WriteAllText(tempFile, updatedJson);
                         File.Copy(tempFile, FilePath, true);
@@ -277,7 +277,6 @@ namespace Assist_Service.Helpers
                 }
                 catch (Exception ex)
                 {
-                    // Full exception with stack trace
                     PWR_Log.PWR_Log($"[MarkPeerOffline] ERROR: {ex}");
                 }
                 finally
@@ -286,6 +285,7 @@ namespace Assist_Service.Helpers
                 }
             }
         }
+
 
 
     }

@@ -27,6 +27,7 @@ namespace Assist_Service.Services
         public const string AcknowledgeMessage = "ACK";
         public const string LeaveMessage = "LEAVE";
         public static readonly IPAddress MulticastAddress = IPAddress.Parse("239.255.255.250");
+        private static readonly TimeSpan RejoinIgnoreWindow = TimeSpan.FromSeconds(60);
 
         private readonly Logging Logger = new Logging();
 
@@ -185,15 +186,13 @@ namespace Assist_Service.Services
                                 existing.Status = filePeer.Status;
                                 existing.LastSeen = filePeer.LastSeen;
                                 existing.LeftGracefully = filePeer.LeftGracefully;
+                                existing.LeftGracefullyAt = filePeer.LeftGracefullyAt;
                                 existing.MissedHeartbeats = filePeer.MissedHeartbeats;
                             }
                         }
                     }
 
-                    Peer peer = null;
-
-                    // Match logic
-                    peer = _peers.FirstOrDefault(p =>
+                    var peer = _peers.FirstOrDefault(p =>
                         (!string.IsNullOrEmpty(p.MacAddress) && p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase)) ||
                         (!string.IsNullOrEmpty(originalNodeName) && p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase)) ||
                         p.NodeName.Equals(peerName, StringComparison.OrdinalIgnoreCase));
@@ -202,11 +201,32 @@ namespace Assist_Service.Services
                     {
                         bool wasOffline = peer.Status != "Online";
 
-                        // 🧠 Respect LeftGracefully flag
+                        // If peer had left gracefully, determine whether to ignore this incoming update
                         if (peer.LeftGracefully)
                         {
-                            Console.WriteLine($"[UpdatePeer] Ignoring update for {peerName} — peer left gracefully.");
-                            return peer; // do not mark Online again
+                            // If we have a timestamp, check elapsed time since graceful leave
+                            if (peer.LeftGracefullyAt.HasValue)
+                            {
+                                var elapsed = DateTime.UtcNow - peer.LeftGracefullyAt.Value;
+                                if (elapsed < RejoinIgnoreWindow)
+                                {
+                                    // Still within ignore window — keep offline and return
+                                    Console.WriteLine($"[UpdatePeer] Ignoring update for {peerName} — LeftGracefully and within ignore window ({elapsed.TotalSeconds:N1}s).");
+                                    return peer;
+                                }
+                                // else: ignore window expired -> allow rejoin below
+                                Console.WriteLine($"[UpdatePeer] LeftGracefully window expired for {peerName} (elapsed {elapsed.TotalSeconds:N1}s). Allowing rejoin.");
+                            }
+                            else
+                            {
+                                // No timestamp set — be conservative and ignore a single immediate update.
+                                Console.WriteLine($"[UpdatePeer] Ignoring update for {peerName} — LeftGracefully=true but no timestamp set.");
+                                return peer;
+                            }
+
+                            // At this point we allow the rejoin: reset the flag
+                            peer.LeftGracefully = false;
+                            peer.LeftGracefullyAt = null;
                         }
 
                         peer.NodeName = peerName;
@@ -234,7 +254,8 @@ namespace Assist_Service.Services
                             Status = "Online",
                             LastSeen = DateTime.UtcNow,
                             MissedHeartbeats = 0,
-                            LeftGracefully = false
+                            LeftGracefully = false,
+                            LeftGracefullyAt = null
                         };
 
                         _peers.Add(peer);
@@ -253,7 +274,6 @@ namespace Assist_Service.Services
             }
         }
 
-
         // Extended version: updates in-memory + persists
         // Extended version: updates in-memory + persists with original identifiers
         private void UpdatePeerAndPersist(string peerName, IPEndPoint endpoint, string ipAddress, string macAddress)
@@ -263,7 +283,6 @@ namespace Assist_Service.Services
                 string originalNodeName = FindOriginalNodeName(macAddress, peerName);
                 Console.WriteLine($"[UpdatePeerAndPersist] Processing: {peerName}, Original: {originalNodeName}, MAC: {macAddress}");
 
-                // Load the latest peers from file first
                 List<Peer> filePeers = new List<Peer>();
                 if (File.Exists(_peersFile))
                 {
@@ -271,7 +290,6 @@ namespace Assist_Service.Services
                     filePeers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
                 }
 
-                // Try to find existing peer in file
                 var existingPeer = filePeers.FirstOrDefault(p =>
                     (!string.IsNullOrEmpty(p.MacAddress) &&
                      p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase)) ||
@@ -280,28 +298,44 @@ namespace Assist_Service.Services
 
                 if (existingPeer != null)
                 {
-                    // Respect graceful leave (don’t flip back to Online)
+                    bool wasOffline = existingPeer.Status != "Online";
+
                     if (existingPeer.LeftGracefully)
                     {
-                        Console.WriteLine($"[UpdatePeerAndPersist] Skipping update for '{peerName}' (LeftGracefully=true, Status={existingPeer.Status}).");
-                        return;
+                        if (existingPeer.LeftGracefullyAt.HasValue)
+                        {
+                            var elapsed = DateTime.UtcNow - existingPeer.LeftGracefullyAt.Value;
+                            if (elapsed < RejoinIgnoreWindow)
+                            {
+                                Console.WriteLine($"[UpdatePeerAndPersist] Skipping update for '{peerName}' — LeftGracefully and within ignore window ({elapsed.TotalSeconds:N1}s).");
+                                return;
+                            }
+
+                            Console.WriteLine($"[UpdatePeerAndPersist] LeftGracefully window expired for '{peerName}' (elapsed {elapsed.TotalSeconds:N1}s). Allowing rejoin.");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[UpdatePeerAndPersist] Skipping update for '{peerName}' — LeftGracefully=true but no timestamp.");
+                            return;
+                        }
+
+                        // Allow rejoin: reset
+                        existingPeer.LeftGracefully = false;
+                        existingPeer.LeftGracefullyAt = null;
                     }
 
-                    // Normal update (peer is active)
                     existingPeer.NodeName = peerName;
                     existingPeer.MacAddress = macAddress;
                     existingPeer.IPAddress = ipAddress;
                     existingPeer.EndPoint = endpoint;
                     existingPeer.LastSeen = DateTime.UtcNow;
                     existingPeer.Status = "Online";
-                    existingPeer.LeftGracefully = false;
                     existingPeer.MissedHeartbeats = 0;
 
                     Console.WriteLine($"[UpdatePeerAndPersist] Updated existing peer '{peerName}' -> Status=Online.");
                 }
                 else
                 {
-                    // New peer discovery (not in file)
                     var newPeer = new Peer
                     {
                         NodeName = peerName,
@@ -311,6 +345,7 @@ namespace Assist_Service.Services
                         Status = "Online",
                         LastSeen = DateTime.UtcNow,
                         LeftGracefully = false,
+                        LeftGracefullyAt = null,
                         MissedHeartbeats = 0
                     };
 
@@ -318,9 +353,7 @@ namespace Assist_Service.Services
                     Console.WriteLine($"[UpdatePeerAndPersist] Added new peer '{peerName}' to list.");
                 }
 
-                // Save updated peers back to file
-                var updatedJson = JsonConvert.SerializeObject(filePeers, Formatting.Indented);
-                File.WriteAllText(_peersFile, updatedJson);
+                File.WriteAllText(_peersFile, JsonConvert.SerializeObject(filePeers, Formatting.Indented));
 
                 Console.WriteLine($"[UpdatePeerAndPersist] Successfully persisted peers.json. Total: {filePeers.Count}");
             }
@@ -329,7 +362,6 @@ namespace Assist_Service.Services
                 Console.WriteLine($"[UpdatePeerAndPersist] ERROR: {ex}");
             }
         }
-
 
         private string FindOriginalNodeName(string macAddress, string currentPeerName)
         {

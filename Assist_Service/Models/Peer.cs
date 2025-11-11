@@ -19,6 +19,7 @@ namespace Assist_Service.Models
         public string Status { get; set; }
         public DateTime LastSeen { get; set; }
         public bool LeftGracefully { get; set; } = false;
+        public DateTime? LeftGracefullyAt { get; set; }
         public int MissedHeartbeats { get; set; } = 0;
     }
 

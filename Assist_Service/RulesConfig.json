@@ -5,7 +5,7 @@
         "TargetNodes": [
             {
                 "NodeName": "Node2",
-                "LaunchApp": "Code",
+                "LaunchApp": "WINWORD",
                 "LaunchArguments": "/q"
             },
             {
