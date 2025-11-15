@@ -443,8 +443,9 @@ namespace Assist_Service.Services
                 }
                 else
                 {
-                    Logger.Log($"Rules address file not found: {addressFilePath}");
-                    return null;
+                    string def_path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuleConfig.json");
+                    Logger.Log($"Rules address file not found: {addressFilePath} executing default rules path");
+                    return def_path;
                 }
             }
             catch (Exception ex)
