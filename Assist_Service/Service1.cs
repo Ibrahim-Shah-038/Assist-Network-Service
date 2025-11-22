@@ -190,18 +190,26 @@ namespace Assist_Service
             }
 
             string rulesFileAddress = File.ReadAllText(rulesFilePath).Trim();
+            string rulesFileAddress_in_case_of_error = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RulesConfig.json");
+
             if (string.IsNullOrEmpty(rulesFileAddress))
             {
                 Log.Log("Rules file address is empty in RulesAddress.txt");
             }
 
             // Read the rules file
+            string rulesJson;
             if (!File.Exists(rulesFileAddress))
             {
                 Log.Log($"Rules file not found at: {rulesFileAddress}");
+                rulesJson = File.ReadAllText(rulesFileAddress_in_case_of_error);
             }
 
-            string rulesJson = File.ReadAllText(rulesFileAddress);
+            else
+            {
+                 rulesJson = File.ReadAllText(rulesFileAddress);    
+            }
+            
             var rules = JsonConvert.DeserializeObject<List<RuleConfig>>(rulesJson);
 
             // Extract all unique TriggerApp values
