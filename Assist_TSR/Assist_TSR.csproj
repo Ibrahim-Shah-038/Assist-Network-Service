@@ -76,6 +76,7 @@
     <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
+    <Reference Include="System.Security" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Text.Encodings.Web, Version=9.0.0.4, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Text.Encodings.Web.9.0.4\lib\net462\System.Text.Encodings.Web.dll</HintPath>
@@ -102,6 +103,9 @@
   <ItemGroup>
     <Compile Include="Classes\File_Helper_Class.cs" />
     <Compile Include="Classes\Rule_Class.cs" />
+    <Compile Include="Classes\ShadowPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Event_Handler\Clouser_App.cs" />
     <Compile Include="Event_Handler\launcher.cs" />
     <Compile Include="Event_Handler\Loading_Config.cs" />
@@ -112,6 +116,12 @@
     </Compile>
     <Compile Include="Forms\Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\LoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\LoginForm.Designer.cs">
+      <DependentUpon>LoginForm.cs</DependentUpon>
     </Compile>
     <Compile Include="IPC_Handler\Get_File_Path.cs" />
     <Compile Include="IPC_Handler\Get_List_Rules.cs" />
@@ -138,6 +148,9 @@
     <Compile Include="Utilities\TSR_Power_Log.cs" />
     <EmbeddedResource Include="Forms\Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\LoginForm.resx">
+      <DependentUpon>LoginForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -201,6 +214,9 @@
       <Project>{a05cc1ff-8ad0-48aa-aca9-6d9a6d052abb}</Project>
       <Name>Assist_Service</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\assist_png.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

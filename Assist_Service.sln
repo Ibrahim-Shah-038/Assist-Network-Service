@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		AddFirewallRules.ps1 = AddFirewallRules.ps1
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assist_InstallerUI", "Assist_InstallerUI\Assist_InstallerUI.csproj", "{456507DB-E916-495E-AA0B-CB96D323A83C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,12 @@ Global
 		{B0FC534F-DB60-4902-9750-DD280E23541F}.Debug|Any CPU.ActiveCfg = Debug
 		{B0FC534F-DB60-4902-9750-DD280E23541F}.DefaultBuild|Any CPU.ActiveCfg = Debug
 		{B0FC534F-DB60-4902-9750-DD280E23541F}.Release|Any CPU.ActiveCfg = Release
+		{456507DB-E916-495E-AA0B-CB96D323A83C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{456507DB-E916-495E-AA0B-CB96D323A83C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{456507DB-E916-495E-AA0B-CB96D323A83C}.DefaultBuild|Any CPU.ActiveCfg = Debug|Any CPU
+		{456507DB-E916-495E-AA0B-CB96D323A83C}.DefaultBuild|Any CPU.Build.0 = Debug|Any CPU
+		{456507DB-E916-495E-AA0B-CB96D323A83C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{456507DB-E916-495E-AA0B-CB96D323A83C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

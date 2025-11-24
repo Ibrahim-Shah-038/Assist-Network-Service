@@ -70,12 +70,6 @@
         "Entry"
         {
         "MsmKey" = "8:_4DEC0D11287E4D2FAACBBC86E028728F"
-        "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_4DEC0D11287E4D2FAACBBC86E028728F"
         "OwnerKey" = "8:_607B13831DBDFBF73A444DAC740498EA"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -153,18 +147,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_607B13831DBDFBF73A444DAC740498EA"
-        "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_607B13831DBDFBF73A444DAC740498EA"
-        "OwnerKey" = "8:_D7933C9021C36178C24952D7FC07AA70"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_647A7797EA5747C5113E4437FAEA0E5D"
         "OwnerKey" = "8:_E67C3AE97EEACF04D99DC8B7EF1B0653"
         "MsmSig" = "8:_UNDEFINED"
@@ -202,12 +184,6 @@
         "Entry"
         {
         "MsmKey" = "8:_678F965CA73FDE874327AFFD2BF8E0FC"
-        "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_678F965CA73FDE874327AFFD2BF8E0FC"
         "OwnerKey" = "8:_607B13831DBDFBF73A444DAC740498EA"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -215,12 +191,6 @@
         {
         "MsmKey" = "8:_67FA7028B45421B01BF02426547A1D95"
         "OwnerKey" = "8:_47E512C9FECA4FC7AD350EE2FDB33A3E"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_67FA7028B45421B01BF02426547A1D95"
-        "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -310,7 +280,19 @@
         "Entry"
         {
         "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
+        "OwnerKey" = "8:_EC68FA95F99C40748F70F6D3C37E2A12"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
         "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D5E6DEF98B2F495AA597F3D824E9855F"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -383,6 +365,12 @@
         {
         "MsmKey" = "8:_E9E2B04459ED43F2E5FECDDF9EF1789A"
         "OwnerKey" = "8:_5EEBB413166371C4FFF478DAF763AA09"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_EC68FA95F99C40748F70F6D3C37E2A12"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -473,6 +461,18 @@
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_47E512C9FECA4FC7AD350EE2FDB33A3E"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_EC68FA95F99C40748F70F6D3C37E2A12"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_D5E6DEF98B2F495AA597F3D824E9855F"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -668,6 +668,20 @@
             "Identifier" = "8:_4A2AD4D7_C315_4B25_99EF_37DC1003C84D"
             "InstallerClass" = "11:FALSE"
             "CustomActionData" = "8:powershell.exe -ExecutionPolicy Bypass -File \"[TARGETDIR]\\AddFirewallRules.ps1\""
+            }
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_F665FF6EB7D649B5819BFF0A9AF4CAF4"
+            {
+            "Name" = "8:Assist_InstallerUI.dll"
+            "Condition" = "8:"
+            "Object" = "8:_D5E6DEF98B2F495AA597F3D824E9855F"
+            "FileType" = "3:1"
+            "InstallAction" = "3:1"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:2"
+            "Identifier" = "8:_CD9FE359_494F_4258_A114_DB62DD565B88"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:"
             }
         }
         "DefaultFeature"
@@ -1153,6 +1167,37 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_D5E6DEF98B2F495AA597F3D824E9855F"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:Assist_InstallerUI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
+                "ScatterAssemblies"
+                {
+                    "_D5E6DEF98B2F495AA597F3D824E9855F"
+                    {
+                    "Name" = "8:Assist_InstallerUI.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:..\\Assist_InstallerUI\\bin\\Debug\\Assist_InstallerUI.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_D7933C9021C36178C24952D7FC07AA70"
             {
             "AssemblyRegister" = "3:1"
@@ -1383,6 +1428,18 @@
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Property" = "8:DesktopFolder"
+                "Folders"
+                {
+                }
+            }
+            "{994432C3-9487-495D-8656-3E829A8DBDDE}:_AD4B59365852407C8E65094BA9760B28"
+            {
+            "DefaultLocation" = "8:C:\\ProgramData\\Assist\\Auth"
+            "Name" = "8:AuthFolder"
+            "AlwaysCreate" = "11:FALSE"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Property" = "8:NEWPROPERTY1"
                 "Folders"
                 {
                 }
@@ -2242,6 +2299,34 @@
             "OutputConfiguration" = "8:"
             "OutputGroupCanonicalName" = "8:Built"
             "OutputProjectGuid" = "8:{9858DDA4-8FC0-4B46-82B7-92E74577A19E}"
+            "ShowKeyOutput" = "11:TRUE"
+                "ExcludeFilters"
+                {
+                }
+            }
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_EC68FA95F99C40748F70F6D3C37E2A12"
+            {
+            "SourcePath" = "8:..\\Assist_InstallerUI\\obj\\Debug\\Assist_InstallerUI.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            "ProjectOutputGroupRegister" = "3:1"
+            "OutputConfiguration" = "8:"
+            "OutputGroupCanonicalName" = "8:Built"
+            "OutputProjectGuid" = "8:{456507DB-E916-495E-AA0B-CB96D323A83C}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
                 {

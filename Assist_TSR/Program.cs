@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceProcess;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Assist_TSR.Forms;
 
 namespace Assist_TSR
 {
@@ -29,20 +32,33 @@ namespace Assist_TSR
                 // Add to startup registry if not already there
                 EnsureStartupEntry();
 
-                // Original code - unchanged
+                // Enable visual styles
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                // Create and show the form first (so system tray icon appears)
+                // ----------------------------
+                // Show LoginForm first
+                // ----------------------------
+                LoginForm login = new LoginForm();
+                if (login.ShowDialog() != DialogResult.OK)
+                {
+                    // Exit if login cancelled or failed
+                    return;
+                }
+
+                // ----------------------------
+                // Run TSR main form
+                // ----------------------------
                 Forms.Form1 mainForm = new Forms.Form1();
 
                 // Wait for service in a background thread so UI remains responsive
-                Thread serviceWaitThread = new Thread(() => {
+                Thread serviceWaitThread = new Thread(() =>
+                {
                     WaitForServiceToStart("Assist_Service", TimeSpan.FromSeconds(90));
 
-                    // After service starts, show notification
-                    mainForm.Invoke((MethodInvoker)delegate {
-                        // You can add a notification here if needed
+                    mainForm.Invoke((MethodInvoker)delegate
+                    {
+                        // Optional: show notification after service starts
                         // mainForm.notifyIcon.ShowBalloonTip(2000, "Assist TSR", "Service connected.", ToolTipIcon.Info);
                     });
                 });
@@ -70,23 +86,18 @@ namespace Assist_TSR
 
                         if (service.Status == ServiceControllerStatus.Running)
                         {
-                            // Service is running, wait 1 more second for initialization
-                            Thread.Sleep(1000);
+                            Thread.Sleep(1000); // extra 1 sec
                             return;
                         }
 
-                        // Service is starting or stopped, keep waiting
                         Thread.Sleep(1000);
                     }
                 }
                 catch
                 {
-                    // Service doesn't exist yet or can't be accessed, keep waiting
                     Thread.Sleep(1000);
                 }
             }
-
-            // Timeout reached - continue anyway (app will still work)
         }
 
         private static void EnsureStartupEntry()
@@ -98,18 +109,50 @@ namespace Assist_TSR
                     @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
 
                 var currentValue = key.GetValue("Assist_TSR") as string;
-
-                // Only update if not set or different
                 if (currentValue != appPath)
-                {
                     key.SetValue("Assist_TSR", appPath);
-                }
 
                 key.Close();
             }
             catch
             {
-                // Ignore registry errors - app will still work
+                // Ignore registry errors
+            }
+        }
+
+        // ----------------------------
+        // LOGIN VALIDATION HELPER
+        // ----------------------------
+        public static bool ValidateLogin(string usernameInput, string passwordInput)
+        {
+            try
+            {
+                string folderPath = @"C:\ProgramData\Assist\Auth";
+                string filePath = System.IO.Path.Combine(folderPath, "credentials.bin");
+
+                if (!System.IO.File.Exists(filePath))
+                    return false;
+
+                string savedUsername, savedPasswordEncrypted;
+
+                // Read encrypted credentials
+                using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+                using (var br = new System.IO.BinaryReader(fs))
+                {
+                    savedUsername = br.ReadString();
+                    savedPasswordEncrypted = br.ReadString();
+                }
+
+                // Decrypt password using DPAPI
+                byte[] encryptedBytes = Convert.FromBase64String(savedPasswordEncrypted);
+                byte[] decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
+                string savedPassword = Encoding.UTF8.GetString(decryptedBytes);
+
+                return usernameInput == savedUsername && passwordInput == savedPassword;
+            }
+            catch
+            {
+                return false;
             }
         }
     }
