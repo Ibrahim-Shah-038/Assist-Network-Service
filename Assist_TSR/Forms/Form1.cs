@@ -369,6 +369,12 @@ namespace Assist_TSR.Forms
 
         private void NotifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
         {
+            LoginForm login = new LoginForm();
+            if (login.ShowDialog() != DialogResult.OK)
+            {
+                // Exit if login cancelled or failed
+                return;
+            }
             this.Show();
             this.WindowState = FormWindowState.Normal;
             this.ShowInTaskbar = true;

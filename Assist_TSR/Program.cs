@@ -39,12 +39,12 @@ namespace Assist_TSR
                 // ----------------------------
                 // Show LoginForm first
                 // ----------------------------
-                LoginForm login = new LoginForm();
+                /*LoginForm login = new LoginForm();
                 if (login.ShowDialog() != DialogResult.OK)
                 {
                     // Exit if login cancelled or failed
                     return;
-                }
+                }*/
 
                 // ----------------------------
                 // Run TSR main form
