@@ -2,6 +2,9 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
+using System.Security.Cryptography;
+using System.Text;
+
 
 namespace Assist_InstallerUI
 {
@@ -221,12 +224,21 @@ namespace Assist_InstallerUI
                 // 3️⃣ File path
                 string filePath = System.IO.Path.Combine(folderPath, "credentials.bin");
 
-                // 4️⃣ Save data in binary format
+                // 4️⃣ Encrypt password using DPAPI
+                byte[] encryptedBytes = ProtectedData.Protect(
+                    Encoding.UTF8.GetBytes(password),
+                    null,
+                    DataProtectionScope.CurrentUser
+                );
+
+                string encryptedBase64 = Convert.ToBase64String(encryptedBytes);
+
+                // 5️⃣ Save username + encrypted password (as Base64) in binary format
                 using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Create, System.IO.FileAccess.Write))
                 using (var bw = new System.IO.BinaryWriter(fs))
                 {
                     bw.Write(username);
-                    bw.Write(password);
+                    bw.Write(encryptedBase64);
                 }
 
                 MessageBox.Show("Credentials saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -236,6 +248,7 @@ namespace Assist_InstallerUI
                 MessageBox.Show("Error saving credentials: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
 
     }
 }
