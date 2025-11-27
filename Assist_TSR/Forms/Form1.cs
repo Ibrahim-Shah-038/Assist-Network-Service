@@ -1160,29 +1160,37 @@ namespace Assist_TSR.Forms
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // Stop the timer first
-            logUpdateTimer.Stop();
-
-            // Add your TSR cleanup logic
-            isRunning = false;
-
-            // Clean up the server thread with timeout to prevent freezing
-            if (launchServerThread != null && launchServerThread.IsAlive)
+            // Only intercept user closing, allow system shutdown to close normally
+            if (e.CloseReason == CloseReason.UserClosing)
             {
-                if (!launchServerThread.Join(500)) // Wait up to 500ms for clean shutdown
+                e.Cancel = true;               // Cancel the close event
+                this.Hide();                   // Hide the form
+                this.ShowInTaskbar = false;    // Remove from taskbar
+
+                // Show a balloon tip (optional)
+                notifyIcon.ShowBalloonTip(1000, "Assist TSR",
+                    "The application is still running in the system tray.", ToolTipIcon.Info);
+
+                // Stop any timers / background threads as needed
+                logUpdateTimer.Stop();
+                isRunning = false;
+
+                if (launchServerThread != null && launchServerThread.IsAlive)
                 {
-                    // Thread didn't exit cleanly in time
-                    try { launchServerThread.Interrupt(); } catch { }
+                    if (!launchServerThread.Join(500)) // Wait 500ms for clean shutdown
+                    {
+                        try { launchServerThread.Interrupt(); } catch { }
+                    }
                 }
+
+                // Do NOT dispose the notifyIcon here — we want it to remain in the tray
+                return; // Exit method early
             }
 
-            // Clean up system tray icon
-            notifyIcon.Visible = false;
-            notifyIcon.Dispose();
-
-            // Call base method last
+            // If system is shutting down, close normally
             base.OnFormClosing(e);
         }
+
 
 
         // STATUS_TAB
