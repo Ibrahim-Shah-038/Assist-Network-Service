@@ -11,6 +11,7 @@ using Assist_Service.Models;
 using Assist_Service.Services;
 using Newtonsoft.Json;
 using System.Linq;
+using Microsoft.Win32; // For SystemEvents
 
 namespace Assist_Service
 {
@@ -38,10 +39,27 @@ namespace Assist_Service
         private readonly object _runningAppsLock = new object();
         private Remote_Power_Management_Service _remotePowerService;
 
-
         public Service1()
         {
             InitializeComponent();
+
+            // Handle process exit events (abrupt termination, system shutdown)
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => SafeBroadcastGoodbye("ProcessExit");
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => SafeBroadcastGoodbye("UnhandledException");
+            SystemEvents.SessionEnding += (s, e) => SafeBroadcastGoodbye("SessionEnding");
+        }
+
+        private void SafeBroadcastGoodbye(string source)
+        {
+            try
+            {
+                _remotePowerService?.BroadcastGoodbye();
+                Logger.Log($"BroadcastGoodbye executed due to {source}.");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Failed to broadcast goodbye during {source}: {ex.Message}");
+            }
         }
 
         protected override void OnStart(string[] args)
@@ -52,7 +70,6 @@ namespace Assist_Service
 
             try
             {
-                // Clear old data for this node before starting
                 PeerFileStorage.ClearAllNodes();
 
                 Logger.Log("Loading node configuration...");
@@ -64,7 +81,6 @@ namespace Assist_Service
                 _udpClient = new UdpClient(DiscoveryService.BroadcastPort);
                 _udpClient.JoinMulticastGroup(DiscoveryService.MulticastAddress);
                 Logger.Log("UDP client initialized and joined multicast group.");
-
 
                 _ruleService = new RuleProcessingService();
                 Logger.Log("Initializing services...");
@@ -80,8 +96,6 @@ namespace Assist_Service
                     _pipeService
                     );
 
-
-
                 Logger.Log("Retrieving active rule configuration path from address file...");
                 string configPath = _pipeService.ReadRulesPathFromAddressFile();
                 Logger.Log($"Active config path obtained: {configPath}");
@@ -90,13 +104,10 @@ namespace Assist_Service
                 _rules = FileHelper.ReadJsonWithRetry<List<RuleConfig>>(configPath);
                 Logger.Log("Rule configurations loaded successfully.");
 
-                //Closure Service
-
-
                 _appClosureService = new ApplicationClosureService(
                     GetMonitoredApps(),
-                    _appMonitorService._rules,       // shared list
-                    _appMonitorService._rulesLock,   // shared lock
+                    _appMonitorService._rules,
+                    _appMonitorService._rulesLock,
                     _peers,
                     _peersLock,
                     _nodeConfig,
@@ -104,7 +115,7 @@ namespace Assist_Service
                     _runningAppsLock
                     );
 
-                _monitoredAppsRefreshTimer = new System.Timers.Timer(10000); // 10 seconds
+                _monitoredAppsRefreshTimer = new System.Timers.Timer(10000);
                 _monitoredAppsRefreshTimer.Elapsed += (sender, e) =>
                 {
                     try
@@ -119,11 +130,11 @@ namespace Assist_Service
                     }
                 };
 
-                Thread monitor_Closure_Thread = new Thread(_appClosureService.MonitorApplicationClosures);
-                monitor_Closure_Thread.IsBackground = true;
-                _AppClosureListenerThread = new Thread(_appClosureService.ListenForUdpClosureCommands);
-                _AppClosureListenerThread.IsBackground = true;
+                Thread monitor_Closure_Thread = new Thread(_appClosureService.MonitorApplicationClosures)
+                { IsBackground = true };
 
+                _AppClosureListenerThread = new Thread(_appClosureService.ListenForUdpClosureCommands)
+                { IsBackground = true };
 
                 Logger.Log("All services initialized.");
 
@@ -135,10 +146,8 @@ namespace Assist_Service
                 _pipeService.Start();
                 monitor_Closure_Thread.Start();
                 _AppClosureListenerThread.Start();
-                
-                Logger.Log("All services started successfully.");
 
-                // Remote Power Management
+                Logger.Log("All services started successfully.");
 
                 _remotePowerService = new Remote_Power_Management_Service();
                 _remotePowerService.Start();
@@ -153,10 +162,10 @@ namespace Assist_Service
 
         protected override void OnStop()
         {
+            SafeBroadcastGoodbye("OnStop");
             _isRunning = false;
 
-            //_discoveryService?.Stop();
-            _discoveryService.Stop();
+            _discoveryService?.Stop();
             _appMonitorService?.Stop();
             _pipeService?.Stop();
 
@@ -167,12 +176,9 @@ namespace Assist_Service
 
             try
             {
-                if (_remotePowerService != null)
-                {
-                    _remotePowerService.Stop();    // tell it to stop
-                    _remotePowerService = null;    // release reference
-                    Logger.Log("Remote Power Management Service stopped.");
-                }
+                _remotePowerService?.Stop();
+                _remotePowerService = null;
+                Logger.Log("Remote Power Management Service stopped.");
             }
             catch (Exception ex)
             {
@@ -182,37 +188,28 @@ namespace Assist_Service
 
         private List<string> GetMonitoredApps()
         {
-            // Read the rules file address from RulesAddress.txt
             string rulesFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RulesAddress.txt");
             if (!File.Exists(rulesFilePath))
-            {
                 Log.Log("RulesAddress.txt not found in the base directory");
-            }
 
             string rulesFileAddress = File.ReadAllText(rulesFilePath).Trim();
             string rulesFileAddress_in_case_of_error = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RulesConfig.json");
 
             if (string.IsNullOrEmpty(rulesFileAddress))
-            {
                 Log.Log("Rules file address is empty in RulesAddress.txt");
-            }
 
-            // Read the rules file
             string rulesJson;
             if (!File.Exists(rulesFileAddress))
             {
                 Log.Log($"Rules file not found at: {rulesFileAddress}");
                 rulesJson = File.ReadAllText(rulesFileAddress_in_case_of_error);
             }
-
             else
             {
-                 rulesJson = File.ReadAllText(rulesFileAddress);    
+                rulesJson = File.ReadAllText(rulesFileAddress);
             }
-            
-            var rules = JsonConvert.DeserializeObject<List<RuleConfig>>(rulesJson);
 
-            // Extract all unique TriggerApp values
+            var rules = JsonConvert.DeserializeObject<List<RuleConfig>>(rulesJson);
             var monitoredApps = rules.Select(r => r.TriggerApp).Distinct().ToList();
             Log.Log($"Triggerer App(s): {string.Join(", ", monitoredApps)}");
             return monitoredApps;

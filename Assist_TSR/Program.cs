@@ -145,7 +145,7 @@ namespace Assist_TSR
 
                 // Decrypt password using DPAPI
                 byte[] encryptedBytes = Convert.FromBase64String(savedPasswordEncrypted);
-                byte[] decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
+                byte[] decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.LocalMachine);
                 string savedPassword = Encoding.UTF8.GetString(decryptedBytes);
 
                 return usernameInput == savedUsername && passwordInput == savedPassword;

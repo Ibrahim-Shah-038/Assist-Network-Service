@@ -18,7 +18,7 @@ namespace Assist_Service.Services
     {
         public readonly UdpClient _udpClient;
         public readonly NodeConfig _nodeConfig;
-        public  List<Peer> _peers;
+        public List<Peer> _peers;
         public readonly object _peersLock;
         private bool _isRunning;
 
@@ -82,13 +82,13 @@ namespace Assist_Service.Services
 
         private void DiscoverPeers()
         {
-           
+
             while (_isRunning)
             {
                 try
                 {
                     string token = SecurityHelper.GenerateToken(DiscoveryMessage);
-                    
+
                     string message = $"{DiscoveryMessage}:{_nodeConfig.NodeName}:{ipv4}:{macAddress}:{token}";
                     byte[] bytes = Encoding.UTF8.GetBytes(message);
                     _udpClient.Send(bytes, bytes.Length, new IPEndPoint(MulticastAddress, BroadcastPort));

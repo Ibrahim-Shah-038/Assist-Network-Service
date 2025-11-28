@@ -291,8 +291,6 @@ namespace Assist_TSR.Forms
                     launchServerThread.Join(500); // Cleanup any previous thread
                 }
 
-                
-
                 launchServerThread = new Thread(my_server.StartLaunchServer);
                 launchServerThread.IsBackground = true;
                 launchServerThread.Start();
@@ -307,10 +305,21 @@ namespace Assist_TSR.Forms
                 closureServerThread.IsBackground = true;
                 closureServerThread.Start();
 
-                // Immediate UI feedback
-                con_stat_val.Text = "Running";
-                con_status.Text = "Active";
-                con_status.ForeColor = Color.Green;
+                // ✅ Immediate UI feedback - with thread-safe invoke
+                if (this.InvokeRequired)
+                {
+                    this.Invoke((MethodInvoker)delegate {
+                        con_stat_val.Text = "Running";
+                        con_status.Text = "Active";
+                        con_status.ForeColor = Color.Green;
+                    });
+                }
+                else
+                {
+                    con_stat_val.Text = "Running";
+                    con_status.Text = "Active";
+                    con_status.ForeColor = Color.Green;
+                }
 
                 // Delayed notification
                 Task.Delay(1000).ContinueWith(t => {
@@ -365,6 +374,9 @@ namespace Assist_TSR.Forms
             this.WindowState = FormWindowState.Minimized;
             this.ShowInTaskbar = false;
             this.Hide();  // Hide the form on startup
+
+            // ✅ Auto-start the server when form loads
+            Task.Run(() => OnStart(null, EventArgs.Empty));
         }
 
         private void NotifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -405,7 +417,7 @@ namespace Assist_TSR.Forms
 
         }
 
-        private async void start_Click(object sender, EventArgs e)
+        private void start_Click(object sender, EventArgs e)
         {
             try
             {
@@ -413,7 +425,7 @@ namespace Assist_TSR.Forms
                 red.Visible = false;
                 start.Enabled = false; // Disable button during operation
 
-                await Task.Run(() => OnStart(sender, e));
+                //await Task.Run(() => OnStart(sender, e));
             }
             catch (Exception ex)
             {

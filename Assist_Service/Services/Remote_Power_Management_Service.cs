@@ -159,7 +159,7 @@ namespace Assist_Service.Services
         // -------------------------------
         // Broadcast GOODBYE
         // -------------------------------
-        private void BroadcastGoodbye()
+        public void BroadcastGoodbye()
         {
             try
             {

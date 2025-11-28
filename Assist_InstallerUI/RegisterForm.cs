@@ -228,7 +228,7 @@ namespace Assist_InstallerUI
                 byte[] encryptedBytes = ProtectedData.Protect(
                     Encoding.UTF8.GetBytes(password),
                     null,
-                    DataProtectionScope.CurrentUser
+                    DataProtectionScope.LocalMachine
                 );
 
                 string encryptedBase64 = Convert.ToBase64String(encryptedBytes);
