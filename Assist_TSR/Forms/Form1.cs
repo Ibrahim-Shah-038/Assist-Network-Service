@@ -120,14 +120,35 @@ namespace Assist_TSR.Forms
                 InitializeSystemTrayIcon();
                 Log("Initialized system tray icon");
 
-                my_server.StartLaunchServer();
-                Log("Server launch started");
+                try
+                {
+                    my_server.StartLaunchServer();
+                    Log("Server launch started");
+                }
+                catch (Exception ex)
+                {
+                    Log("StartLaunchServer failed: " + ex);
+                }
 
-                my_server.StartClosureServer();
-                Log("Closure Server launch started");
+                try
+                {
+                    my_server.StartClosureServer();
+                    Log("Closure Server launch started");
+                }
+                catch (Exception ex)
+                {
+                    Log("StartClosureServer failed: " + ex);
+                }
 
-                timer_.InitializeTimer();
-                Log("Timer initialized");
+                try
+                {
+                    timer_.InitializeTimer();
+                    Log("Timer initialized");
+                }
+                catch (Exception ex)
+                {
+                    Log("Timer init failed: " + ex);
+                }
 
                 InitializeDataGridView();
                 Log("DataGridView initialized");
@@ -138,17 +159,35 @@ namespace Assist_TSR.Forms
                 loader.LoadConfig();
                 Log("Config loaded");
 
-                listen_app_status = new Listen_App_Status(_statuses, new Action(() =>
-                {
-                    if (InvokeRequired)
-                        Invoke(new Action(UpdateTreeView));
-                    else
-                        UpdateTreeView();
-                }), _statusLock);
+                listen_app_status = new Listen_App_Status(
+                    _statuses,
+                    new Action(() =>
+                    {
+                        try
+                        {
+                            if (IsDisposed || !IsHandleCreated) return;
+
+                            if (InvokeRequired)
+                                BeginInvoke(new Action(UpdateTreeView));
+                            else
+                                UpdateTreeView();
+                        }
+                        catch (ObjectDisposedException) { }
+                        catch (InvalidOperationException) { }
+                        }),
+                        _statusLock
+                );
                 Log("Initialized listen_app_status");
 
-                listen_app_status.StartListeningToAppStatusPipe();
-                Log("Started listening to pipe");
+                try
+                {
+                    listen_app_status.StartListeningToAppStatusPipe();
+                    Log("Started listening to pipe");
+                }
+                catch (Exception ex)
+                {
+                    Log("Pipe listen failed: " + ex);
+                }
 
                 SetupTreeView();
                 Log("Tree view set up");
@@ -201,17 +240,24 @@ namespace Assist_TSR.Forms
         }
 
         // LINKED WITH REQUEST_DATA.CS FILE IN IPC_HANDLER FOLDER
-
         public void ShowNotificationSafe(string message)
         {
-            if (InvokeRequired)
+            try
             {
-                Invoke((MethodInvoker)(() => ShowNotificationSafe(message)));
-                return;
-            }
+                if (IsDisposed || !IsHandleCreated) return;
 
-            ShowNotification(message);
+                if (InvokeRequired)
+                {
+                    BeginInvoke((MethodInvoker)(() => ShowNotificationSafe(message)));
+                    return;
+                }
+
+                ShowNotification(message);
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
         }
+
 
         private void ShowNotification(string message)
         {
@@ -228,22 +274,25 @@ namespace Assist_TSR.Forms
         }
 
         // Updated to use the new async method directly
-        
+
 
         // UPDATING_GENERAL_TAB
         private async void UpdateUIWithStatus()
         {
-            // Request Node Name from the service
-            string nodeName = await fetch_data.FetchDataAsync("GET_NODE_NAME");
+            try
+            {
+                string nodeName = await fetch_data.FetchDataAsync("GET_NODE_NAME");
+                node_value.Text = nodeName;
 
-            node_value.Text = nodeName;
+                string activePreset = await fetch_data.FetchDataAsync("GET_ACTIVE_PRESET");
+                preset_value.Text = activePreset;
 
-            // Request Active Preset from the service
-            string activePreset = await fetch_data.FetchDataAsync("GET_ACTIVE_PRESET");
-            preset_value.Text = activePreset;
-
-            // Update Console Status directly from the Windows Forms application
-            con_stat_val.Text = isRunning ? "Running" : "Stopped";
+                con_stat_val.Text = isRunning ? "Running" : "Stopped";
+            }
+            catch (Exception ex)
+            {
+                Log("UpdateUIWithStatus failed: " + ex);
+            }
         }
 
         private void InitializeDataGridView()

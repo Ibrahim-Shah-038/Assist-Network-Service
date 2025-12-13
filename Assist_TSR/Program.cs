@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Assist_TSR.Forms;
+using System.IO;
 
 namespace Assist_TSR
 {
@@ -70,6 +71,17 @@ namespace Assist_TSR
 
                 GC.KeepAlive(mutex);
             }
+
+            Application.ThreadException += (s, e) =>
+            {
+                File.AppendAllText("Assist_TSR_FATAL.txt", e.Exception.ToString());
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                File.AppendAllText("Assist_TSR_FATAL.txt", e.ExceptionObject.ToString());
+            };
+
         }
 
         private static void WaitForServiceToStart(string serviceName, TimeSpan timeout)
