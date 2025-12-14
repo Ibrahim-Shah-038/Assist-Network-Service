@@ -437,6 +437,7 @@ namespace Assist_TSR.Forms
                 return;
             }
             this.Show();
+            isRunning = true;
             this.WindowState = FormWindowState.Normal;
             this.ShowInTaskbar = true;
             Activate();
@@ -497,7 +498,7 @@ namespace Assist_TSR.Forms
                 red.Visible = true;
                 stop.Enabled = false; // Disable button during operation
 
-                await Task.Run(() => OnStop(sender, e));
+                //await Task.Run(() => OnStop(sender, e));
             }
             catch (Exception ex)
             {
