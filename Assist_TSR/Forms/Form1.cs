@@ -258,6 +258,16 @@ namespace Assist_TSR.Forms
             catch (InvalidOperationException) { }
         }
 
+        public void HideNotificationSafe()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(HideNotificationSafe));
+                return;
+            }
+
+            notificationPanel.Visible = false; // or whatever UI you use
+        }
 
         private void ShowNotification(string message)
         {

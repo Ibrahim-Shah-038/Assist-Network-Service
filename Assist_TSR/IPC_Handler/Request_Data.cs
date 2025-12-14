@@ -55,6 +55,7 @@ namespace Assist_TSR.IPC_Handler
                 var reader = new StreamReader(pipeClient);
                 string response = await reader.ReadLineAsync();
 
+                ResetWarning();
                 return response ?? "Unknown";
             }
             catch (System.TimeoutException)
@@ -87,6 +88,16 @@ namespace Assist_TSR.IPC_Handler
             await Task.Delay(100); // Let server initialize
             return await RequestDataFromServiceAsync(requestType);
         }
+
+        private void ResetWarning()
+        {
+            if (hasWarnedUser)
+            {
+                hasWarnedUser = false;
+                form.HideNotificationSafe(); // You must implement this
+            }
+        }
+
 
     }
 }
