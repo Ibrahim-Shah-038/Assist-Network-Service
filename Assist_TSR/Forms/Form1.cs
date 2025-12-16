@@ -340,7 +340,6 @@ namespace Assist_TSR.Forms
 
             notifyIcon.ContextMenuStrip = contextMenu;
         }
-
         private void OnStart(object sender, EventArgs e)
         {
             try
@@ -420,21 +419,10 @@ namespace Assist_TSR.Forms
                     // -------------------------------
                     // 4️⃣ Immediate UI feedback (same as old code)
                     // -------------------------------
-                    if (this.InvokeRequired)
-                    {
-                        this.Invoke((MethodInvoker)delegate
-                        {
+                    
                             con_stat_val.Text = "Running";
                             con_status.Text = "Active";
                             con_status.ForeColor = Color.Green;
-                        });
-                    }
-                    else
-                    {
-                        con_stat_val.Text = "Running";
-                        con_status.Text = "Active";
-                        con_status.ForeColor = Color.Green;
-                    }
 
                     // -------------------------------
                     // 5️⃣ Delayed balloon notification (old code kept, slight delay increased)
@@ -460,8 +448,6 @@ namespace Assist_TSR.Forms
                 File.AppendAllText(onStartLogPath, $"[{DateTime.Now}] Exception in OnStart: {ex}\n");
             }
         }
-
-
 
         private void OnStop(object sender, EventArgs e)
         {
@@ -512,6 +498,7 @@ namespace Assist_TSR.Forms
             Task.Run(() => OnStart(null, EventArgs.Empty));
         }
 
+
         private void NotifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             LoginForm login = new LoginForm();
@@ -548,6 +535,7 @@ namespace Assist_TSR.Forms
 
             UpdateServiceStatus();
             RefreshNetworkStatus();
+            ShowTSRStartedStatus();
 
         }
 
@@ -1356,6 +1344,46 @@ namespace Assist_TSR.Forms
             {
                 service_status.Text = "Service Not Found";
                 service_status.ForeColor = System.Drawing.Color.Gray;
+            }
+        }
+
+        private void ShowTSRStartedStatus()
+        {
+            try
+            {
+                // -------------------------------
+                // 1️⃣ Immediate UI feedback
+                // -------------------------------
+
+                this.BeginInvoke((MethodInvoker)delegate {
+                    con_stat_val.Text = "Running";
+                    con_status.Text = "Active";
+                    con_status.ForeColor = Color.Green;
+                });
+
+                // -------------------------------
+                // 2️⃣ Delayed balloon notification
+                // -------------------------------
+                Task.Delay(2000).ContinueWith(t =>
+                {
+                    // Ensure we are on UI thread
+                    if (this.InvokeRequired)
+                    {
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            notifyIcon.ShowBalloonTip(1000, "Assist", "TSR started.", ToolTipIcon.Info);
+                        });
+                    }
+                    else
+                    {
+                        notifyIcon.ShowBalloonTip(1000, "Assist", "TSR started.", ToolTipIcon.Info);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_UI.log");
+                File.AppendAllText(logPath, $"[{DateTime.Now}] Exception in ShowTSRStartedStatus: {ex}\n");
             }
         }
 
