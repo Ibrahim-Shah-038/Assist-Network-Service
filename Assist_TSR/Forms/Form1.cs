@@ -350,10 +350,10 @@ namespace Assist_TSR.Forms
                     isRunning = true;
 
                     // -------------------------------
-                    // 1️⃣ Wait for ASSIST_Service
+                    // 1️⃣ Wait for Assist_Service to be ready
                     // -------------------------------
                     bool serviceReady = false;
-                    int retries = 30; // 30 retries (~60 sec)
+                    int retries = 30; // ~60 seconds
                     for (int i = 0; i < retries; i++)
                     {
                         try
@@ -368,12 +368,13 @@ namespace Assist_TSR.Forms
                                 }
                             }
                         }
-                        catch { /* ignore transient errors */ }
+                        catch { Thread.Sleep(2000); } // ignore transient errors
                         Thread.Sleep(2000);
                     }
 
                     if (!serviceReady)
                     {
+                        string serviceMissingLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_service_missing.log");
                         File.AppendAllText(
                             serviceMissingLogPath,
                             $"[{DateTime.Now}] Assist_Service not ready, TSR startup aborted.\n");
@@ -384,19 +385,15 @@ namespace Assist_TSR.Forms
                     // 2️⃣ Start Launch Server Thread
                     // -------------------------------
                     if (launchServerThread != null && launchServerThread.IsAlive)
-                        launchServerThread.Join(500); // cleanup previous thread
+                        launchServerThread.Join(500);
 
                     launchServerThread = new Thread(() =>
                     {
-                        try
-                        {
-                            my_server.StartLaunchServer();
-                        }
+                        try { my_server.StartLaunchServer(); }
                         catch (Exception ex)
                         {
-                            File.AppendAllText(
-                                serviceMissingLogPath,
-                                $"[{DateTime.Now}] Assist_Service not ready, TSR launch error.\n");
+                            string launchLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_launch_error.log");
+                            File.AppendAllText(launchLogPath, $"[{DateTime.Now}] {ex}\n");
                         }
                     });
                     launchServerThread.IsBackground = true;
@@ -410,56 +407,60 @@ namespace Assist_TSR.Forms
 
                     closureServerThread = new Thread(() =>
                     {
-                        try
-                        {
-                            my_server.StartClosureServer();
-                        }
+                        try { my_server.StartClosureServer(); }
                         catch (Exception ex)
                         {
-                            File.AppendAllText(
-                                serviceMissingLogPath,
-                                $"[{DateTime.Now}] Assist_Service not ready, TSR closure error.\n");
+                            string closureLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_closure_error.log");
+                            File.AppendAllText(closureLogPath, $"[{DateTime.Now}] {ex}\n");
                         }
                     });
                     closureServerThread.IsBackground = true;
                     closureServerThread.Start();
 
                     // -------------------------------
-                    // 4️⃣ Update UI safely
+                    // 4️⃣ Immediate UI feedback (same as old code)
                     // -------------------------------
-                    this.BeginInvoke((MethodInvoker)delegate
+                    if (this.InvokeRequired)
+                    {
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            con_stat_val.Text = "Running";
+                            con_status.Text = "Active";
+                            con_status.ForeColor = Color.Green;
+                        });
+                    }
+                    else
                     {
                         con_stat_val.Text = "Running";
                         con_status.Text = "Active";
                         con_status.ForeColor = Color.Green;
-                    });
+                    }
 
                     // -------------------------------
-                    // 5️⃣ Delayed notification
+                    // 5️⃣ Delayed balloon notification (old code kept, slight delay increased)
                     // -------------------------------
-                    Task.Delay(3000).ContinueWith(t =>
+                    Task.Delay(2000).ContinueWith(t =>
                     {
-                        this.BeginInvoke((MethodInvoker)delegate
+                        this.Invoke((MethodInvoker)delegate
                         {
                             notifyIcon.ShowBalloonTip(1000, "Assist", "TSR started.", ToolTipIcon.Info);
                         });
                     });
 
                     // -------------------------------
-                    // ✅ Log TSR start
+                    // 6️⃣ Log TSR startup
                     // -------------------------------
-                    /*File.AppendAllText(
-                        @"C:\ProgramData\Assist\TSR_startup.log",
-                        $"[{DateTime.Now}] TSR started successfully.\n");*/
+                    string startupLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_startup.log");
+                    File.AppendAllText(startupLogPath, $"[{DateTime.Now}] TSR started successfully.\n");
                 }
             }
             catch (Exception ex)
             {
-                File.AppendAllText(
-                    @"C:\ProgramData\Assist\TSR_OnStart.log",
-                    $"[{DateTime.Now}] Exception in OnStart: {ex}\n");
+                string onStartLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_OnStart.log");
+                File.AppendAllText(onStartLogPath, $"[{DateTime.Now}] Exception in OnStart: {ex}\n");
             }
         }
+
 
 
         private void OnStop(object sender, EventArgs e)
