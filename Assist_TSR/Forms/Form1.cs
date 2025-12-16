@@ -344,110 +344,82 @@ namespace Assist_TSR.Forms
         {
             try
             {
-                if (!isRunning)
+                if (isRunning)
+                    return;
+
+                isRunning = true;
+
+                // -------------------------------
+                // 1️⃣ Start Launch Server IMMEDIATELY (DO NOT WAIT)
+                // -------------------------------
+                if (launchServerThread != null && launchServerThread.IsAlive)
+                    launchServerThread.Join(500);
+
+                launchServerThread = new Thread(my_server.StartLaunchServer)
                 {
-                    isRunning = true;
+                    IsBackground = true
+                };
+                launchServerThread.Start();
 
-                    // -------------------------------
-                    // 1️⃣ Wait for Assist_Service to be ready
-                    // -------------------------------
-                    bool serviceReady = false;
-                    int retries = 30; // ~60 seconds
-                    for (int i = 0; i < retries; i++)
+                // -------------------------------
+                // 2️⃣ Start Closure Server IMMEDIATELY
+                // -------------------------------
+                if (closureServerThread != null && closureServerThread.IsAlive)
+                    closureServerThread.Join(500);
+
+                closureServerThread = new Thread(my_server.StartClosureServer)
+                {
+                    IsBackground = true
+                };
+                closureServerThread.Start();
+
+                // -------------------------------
+                // 3️⃣ NON-BLOCKING service readiness check (background)
+                // -------------------------------
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
                     {
-                        try
+                        using (ServiceController sc = new ServiceController("Assist_Service"))
                         {
-                            using (ServiceController sc = new ServiceController("Assist_Service"))
-                            {
-                                sc.Refresh();
-                                if (sc.Status == ServiceControllerStatus.Running)
-                                {
-                                    serviceReady = true;
-                                    break;
-                                }
-                            }
+                            sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(60));
                         }
-                        catch { Thread.Sleep(2000); } // ignore transient errors
-                        Thread.Sleep(2000);
                     }
-
-                    if (!serviceReady)
+                    catch (Exception ex)
                     {
-                        string serviceMissingLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_service_missing.log");
+                        string logPath = Path.Combine(
+                            AppDomain.CurrentDomain.BaseDirectory,
+                            "TSR_service_missing.log");
+
                         File.AppendAllText(
-                            serviceMissingLogPath,
-                            $"[{DateTime.Now}] Assist_Service not ready, TSR startup aborted.\n");
-                        return; // stop TSR startup if service unavailable
+                            logPath,
+                            $"[{DateTime.Now}] Assist_Service not ready: {ex}\n");
                     }
+                });
 
-                    // -------------------------------
-                    // 2️⃣ Start Launch Server Thread
-                    // -------------------------------
-                    if (launchServerThread != null && launchServerThread.IsAlive)
-                        launchServerThread.Join(500);
-
-                    launchServerThread = new Thread(() =>
-                    {
-                        try { my_server.StartLaunchServer(); }
-                        catch (Exception ex)
-                        {
-                            string launchLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_launch_error.log");
-                            File.AppendAllText(launchLogPath, $"[{DateTime.Now}] {ex}\n");
-                        }
-                    });
-                    launchServerThread.IsBackground = true;
-                    launchServerThread.Start();
-
-                    // -------------------------------
-                    // 3️⃣ Start Closure Server Thread
-                    // -------------------------------
-                    if (closureServerThread != null && closureServerThread.IsAlive)
-                        closureServerThread.Join(500);
-
-                    closureServerThread = new Thread(() =>
-                    {
-                        try { my_server.StartClosureServer(); }
-                        catch (Exception ex)
-                        {
-                            string closureLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_closure_error.log");
-                            File.AppendAllText(closureLogPath, $"[{DateTime.Now}] {ex}\n");
-                        }
-                    });
-                    closureServerThread.IsBackground = true;
-                    closureServerThread.Start();
-
-                    // -------------------------------
-                    // 4️⃣ Immediate UI feedback (same as old code)
-                    // -------------------------------
-                    
-                            con_stat_val.Text = "Running";
-                            con_status.Text = "Active";
-                            con_status.ForeColor = Color.Green;
-
-                    // -------------------------------
-                    // 5️⃣ Delayed balloon notification (old code kept, slight delay increased)
-                    // -------------------------------
-                    Task.Delay(2000).ContinueWith(t =>
-                    {
-                        this.Invoke((MethodInvoker)delegate
-                        {
-                            notifyIcon.ShowBalloonTip(1000, "Assist", "TSR started.", ToolTipIcon.Info);
-                        });
-                    });
-
-                    // -------------------------------
-                    // 6️⃣ Log TSR startup
-                    // -------------------------------
-                    string startupLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_startup.log");
-                    File.AppendAllText(startupLogPath, $"[{DateTime.Now}] TSR started successfully.\n");
+                // -------------------------------
+                // 4️⃣ UI update (SAME AS OLD CODE)
+                // -------------------------------
+                if (this.InvokeRequired)
+                {
+                    this.BeginInvoke((MethodInvoker)UpdateUIStarted);
+                }
+                else
+                {
+                    UpdateUIStarted();
                 }
             }
             catch (Exception ex)
             {
-                string onStartLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_OnStart.log");
-                File.AppendAllText(onStartLogPath, $"[{DateTime.Now}] Exception in OnStart: {ex}\n");
+                string onStartLogPath =
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_OnStart.log");
+
+                File.AppendAllText(
+                    onStartLogPath,
+                    $"[{DateTime.Now}] Exception in OnStart: {ex}\n");
             }
         }
+
 
         private void OnStop(object sender, EventArgs e)
         {
@@ -535,7 +507,7 @@ namespace Assist_TSR.Forms
 
             UpdateServiceStatus();
             RefreshNetworkStatus();
-            ShowTSRStartedStatus();
+            
 
         }
 
@@ -1347,7 +1319,7 @@ namespace Assist_TSR.Forms
             }
         }
 
-        private void ShowTSRStartedStatus()
+        private void UpdateUIStarted()
         {
             try
             {
