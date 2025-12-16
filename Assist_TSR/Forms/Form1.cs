@@ -49,6 +49,7 @@ namespace Assist_TSR.Forms
         private readonly string logFilePath;
         private long lastFilePosition = 0;
         private readonly object fileLock = new object();
+        string serviceMissingLogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TSR_Fatel_Crash.log");
 
         // Config_App_Status_IPC
         private List<NodeConfig> _config = new List<NodeConfig>();
@@ -342,52 +343,124 @@ namespace Assist_TSR.Forms
 
         private void OnStart(object sender, EventArgs e)
         {
-            if (!isRunning)
+            try
             {
-                isRunning = true;
-                if (launchServerThread != null && launchServerThread.IsAlive)
+                if (!isRunning)
                 {
-                    launchServerThread.Join(500); // Cleanup any previous thread
-                }
+                    isRunning = true;
 
-                launchServerThread = new Thread(my_server.StartLaunchServer);
-                launchServerThread.IsBackground = true;
-                launchServerThread.Start();
+                    // -------------------------------
+                    // 1️⃣ Wait for ASSIST_Service
+                    // -------------------------------
+                    bool serviceReady = false;
+                    int retries = 30; // 30 retries (~60 sec)
+                    for (int i = 0; i < retries; i++)
+                    {
+                        try
+                        {
+                            using (ServiceController sc = new ServiceController("Assist_Service"))
+                            {
+                                sc.Refresh();
+                                if (sc.Status == ServiceControllerStatus.Running)
+                                {
+                                    serviceReady = true;
+                                    break;
+                                }
+                            }
+                        }
+                        catch { /* ignore transient errors */ }
+                        Thread.Sleep(2000);
+                    }
 
-                // New closure server code (same pattern)
-                if (closureServerThread != null && closureServerThread.IsAlive)
-                {
-                    closureServerThread.Join(500); // Cleanup any previous thread
-                }
+                    if (!serviceReady)
+                    {
+                        File.AppendAllText(
+                            serviceMissingLogPath,
+                            $"[{DateTime.Now}] Assist_Service not ready, TSR startup aborted.\n");
+                        return; // stop TSR startup if service unavailable
+                    }
 
-                closureServerThread = new Thread(my_server.StartClosureServer);
-                closureServerThread.IsBackground = true;
-                closureServerThread.Start();
+                    // -------------------------------
+                    // 2️⃣ Start Launch Server Thread
+                    // -------------------------------
+                    if (launchServerThread != null && launchServerThread.IsAlive)
+                        launchServerThread.Join(500); // cleanup previous thread
 
-                // ✅ Immediate UI feedback - with thread-safe invoke
-                if (this.InvokeRequired)
-                {
-                    this.Invoke((MethodInvoker)delegate {
+                    launchServerThread = new Thread(() =>
+                    {
+                        try
+                        {
+                            my_server.StartLaunchServer();
+                        }
+                        catch (Exception ex)
+                        {
+                            File.AppendAllText(
+                                serviceMissingLogPath,
+                                $"[{DateTime.Now}] Assist_Service not ready, TSR launch error.\n");
+                        }
+                    });
+                    launchServerThread.IsBackground = true;
+                    launchServerThread.Start();
+
+                    // -------------------------------
+                    // 3️⃣ Start Closure Server Thread
+                    // -------------------------------
+                    if (closureServerThread != null && closureServerThread.IsAlive)
+                        closureServerThread.Join(500);
+
+                    closureServerThread = new Thread(() =>
+                    {
+                        try
+                        {
+                            my_server.StartClosureServer();
+                        }
+                        catch (Exception ex)
+                        {
+                            File.AppendAllText(
+                                serviceMissingLogPath,
+                                $"[{DateTime.Now}] Assist_Service not ready, TSR closure error.\n");
+                        }
+                    });
+                    closureServerThread.IsBackground = true;
+                    closureServerThread.Start();
+
+                    // -------------------------------
+                    // 4️⃣ Update UI safely
+                    // -------------------------------
+                    this.BeginInvoke((MethodInvoker)delegate
+                    {
                         con_stat_val.Text = "Running";
                         con_status.Text = "Active";
                         con_status.ForeColor = Color.Green;
                     });
-                }
-                else
-                {
-                    con_stat_val.Text = "Running";
-                    con_status.Text = "Active";
-                    con_status.ForeColor = Color.Green;
-                }
 
-                // Delayed notification
-                Task.Delay(1000).ContinueWith(t => {
-                    this.Invoke((MethodInvoker)delegate {
-                        notifyIcon.ShowBalloonTip(1000, "Assist", "TSR started.", ToolTipIcon.Info);
+                    // -------------------------------
+                    // 5️⃣ Delayed notification
+                    // -------------------------------
+                    Task.Delay(3000).ContinueWith(t =>
+                    {
+                        this.BeginInvoke((MethodInvoker)delegate
+                        {
+                            notifyIcon.ShowBalloonTip(1000, "Assist", "TSR started.", ToolTipIcon.Info);
+                        });
                     });
-                });
+
+                    // -------------------------------
+                    // ✅ Log TSR start
+                    // -------------------------------
+                    /*File.AppendAllText(
+                        @"C:\ProgramData\Assist\TSR_startup.log",
+                        $"[{DateTime.Now}] TSR started successfully.\n");*/
+                }
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(
+                    @"C:\ProgramData\Assist\TSR_OnStart.log",
+                    $"[{DateTime.Now}] Exception in OnStart: {ex}\n");
             }
         }
+
 
         private void OnStop(object sender, EventArgs e)
         {
@@ -1514,6 +1587,26 @@ namespace Assist_TSR.Forms
         private void select_all_Click(object sender, EventArgs e)
         {
             var pcIcons = panel10.Controls.OfType<PictureBox>();
+
+            if (!selectAllActive)
+            {
+                // ✅ First click → Select all
+                selectionManager.SelectAll(pcIcons);
+                selectAllActive = true;
+                select_all.Checked = true;
+            }
+            else
+            {
+                // ✅ Second click → Deselect all
+                selectionManager.DeselectAll(pcIcons);
+                selectAllActive = false;
+                select_all.Checked = false; // uncheck manually
+            }
+        }
+
+        private void select_all_2_Click(object sender, EventArgs e)
+        {
+            var pcIcons = panel11.Controls.OfType<PictureBox>();
 
             if (!selectAllActive)
             {

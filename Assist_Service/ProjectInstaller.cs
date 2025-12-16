@@ -16,6 +16,7 @@ namespace Assist_Service
             InitializeComponent();
             serviceProcessInstaller1.Account = System.ServiceProcess.ServiceAccount.LocalSystem;
             serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
+            serviceInstaller1.DelayedAutoStart = true;
         }
 
         private void serviceInstaller1_AfterInstall(object sender, InstallEventArgs e)
