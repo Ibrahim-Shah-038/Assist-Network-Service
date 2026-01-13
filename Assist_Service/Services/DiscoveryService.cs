@@ -11,12 +11,13 @@ using System.Threading;
 using Assist_Service.Helpers;
 using Assist_Service.Models;
 using Newtonsoft.Json;
+using System.Net.NetworkInformation;
 
 namespace Assist_Service.Services
 {
     public class DiscoveryService
     {
-        public readonly UdpClient _udpClient;
+        public UdpClient _udpClient;
         public readonly NodeConfig _nodeConfig;
         public List<Peer> _peers;
         public readonly object _peersLock;
@@ -52,6 +53,9 @@ namespace Assist_Service.Services
         {
             _isRunning = true;
 
+            NetworkChange.NetworkAddressChanged += OnNetworkChanged;
+            _udpClient.JoinMulticastGroup(MulticastAddress);
+
             Thread discoveryThread = new Thread(DiscoverPeers) { IsBackground = true };
             discoveryThread.Start();
 
@@ -70,6 +74,7 @@ namespace Assist_Service.Services
                 string message = $"{LeaveMessage}:{_nodeConfig.NodeName}:{ipv4}:{token}";
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 _udpClient.Send(bytes, bytes.Length, new IPEndPoint(MulticastAddress, BroadcastPort));
+                NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
                 Logger.Log($"Sent LEAVE message to peers: {_nodeConfig.NodeName}");
             }
             catch (Exception ex)
@@ -405,6 +410,52 @@ namespace Assist_Service.Services
 
             Console.WriteLine($"[FindOriginalNodeName] Using current name as original: {currentPeerName}");
             return currentPeerName; // Fallback to current name
+        }
+
+        //NETWORK CHANGE LOGIC
+        private void OnNetworkChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                Logger.Log("[Network] Network change detected. Rebinding UDP socket.");
+
+                lock (_peersLock)
+                {
+                    _udpClient?.Close();
+
+                    _udpClient = new UdpClient();
+                    _udpClient.ExclusiveAddressUse = false;
+                    _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, BroadcastPort));
+
+                    _udpClient.JoinMulticastGroup(MulticastAddress);
+                }
+
+                // Immediately announce presence
+                SendImmediateDiscovery();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[Network] Rebind failed: {ex.Message}");
+            }
+        }
+
+        private void SendImmediateDiscovery()
+        {
+            try
+            {
+                string token = SecurityHelper.GenerateToken(DiscoveryMessage);
+                string message = $"{DiscoveryMessage}:{_nodeConfig.NodeName}:{ipv4}:{macAddress}:{token}";
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+
+                _udpClient.Send(bytes, bytes.Length, new IPEndPoint(MulticastAddress, BroadcastPort));
+
+                Logger.Log("[Discovery] Immediate DISCOVER sent after network change.");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[Discovery] Immediate send failed: {ex.Message}");
+            }
         }
 
 

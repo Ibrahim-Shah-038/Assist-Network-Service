@@ -77,15 +77,37 @@ namespace Assist_Service
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeConfig.json"));
                 Logger.Log("Node configuration loaded successfully.");
 
+                // ===========================
+                // ✅ FIXED UDP INITIALIZATION
+                // ===========================
                 Logger.Log("Initializing UDP client...");
-                _udpClient = new UdpClient(DiscoveryService.BroadcastPort);
+
+                _udpClient = new UdpClient();
+                _udpClient.ExclusiveAddressUse = false;
+                _udpClient.Client.SetSocketOption(
+                    SocketOptionLevel.Socket,
+                    SocketOptionName.ReuseAddress,
+                    true);
+
+                _udpClient.Client.Bind(
+                    new IPEndPoint(IPAddress.Any, DiscoveryService.BroadcastPort));
+
                 _udpClient.JoinMulticastGroup(DiscoveryService.MulticastAddress);
-                Logger.Log("UDP client initialized and joined multicast group.");
+
+                Logger.Log("UDP client initialized, bound, and joined multicast group.");
+                // ===========================
 
                 _ruleService = new RuleProcessingService();
+
                 Logger.Log("Initializing services...");
                 _discoveryService = new DiscoveryService(_udpClient, _nodeConfig, _peers, _peersLock);
-                _pipeService = new PipeCommunicationService(_nodeConfig, _peers, _peersLock, _rules);
+
+                _pipeService = new PipeCommunicationService(
+                    _nodeConfig,
+                    _peers,
+                    _peersLock,
+                    _rules);
+
                 _appMonitorService = new ApplicationMonitorService(
                     GetMonitoredApps(),
                     _nodeConfig,
@@ -94,7 +116,7 @@ namespace Assist_Service
                     _udpClient,
                     _ruleService,
                     _pipeService
-                    );
+                );
 
                 Logger.Log("Retrieving active rule configuration path from address file...");
                 string configPath = _pipeService.ReadRulesPathFromAddressFile();
@@ -113,7 +135,7 @@ namespace Assist_Service
                     _nodeConfig,
                     _appMonitorService._runningApplications,
                     _runningAppsLock
-                    );
+                );
 
                 _monitoredAppsRefreshTimer = new System.Timers.Timer(10000);
                 _monitoredAppsRefreshTimer.Elapsed += (sender, e) =>
@@ -141,9 +163,11 @@ namespace Assist_Service
                 Logger.Log("Starting services...");
                 _monitoredAppsRefreshTimer.AutoReset = true;
                 _monitoredAppsRefreshTimer.Start();
+
                 _discoveryService.Start();
                 _appMonitorService.Start();
                 _pipeService.Start();
+
                 monitor_Closure_Thread.Start();
                 _AppClosureListenerThread.Start();
 
@@ -159,6 +183,7 @@ namespace Assist_Service
                 throw;
             }
         }
+
 
         protected override void OnStop()
         {
