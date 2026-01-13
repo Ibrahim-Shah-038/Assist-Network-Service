@@ -54,7 +54,7 @@ namespace Assist_Service.Services
             _isRunning = true;
 
             NetworkChange.NetworkAddressChanged += OnNetworkChanged;
-            _udpClient.JoinMulticastGroup(MulticastAddress);
+            
 
             Thread discoveryThread = new Thread(DiscoverPeers) { IsBackground = true };
             discoveryThread.Start();

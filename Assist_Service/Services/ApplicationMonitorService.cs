@@ -30,7 +30,7 @@ namespace Assist_Service.Services
         public readonly object _rulesLock = new object(); // Lock to protect shared access
         private readonly List<Peer> _peers;
         private readonly object _peersLock;
-        private readonly UdpClient _udpClient = new UdpClient(12347);
+        private readonly UdpClient _udpClient;
         private readonly Logging Logger = new Logging();
         private readonly Test_Log Log = new Test_Log();
         private bool _isRunning;

@@ -66,6 +66,7 @@ namespace Assist_Service
         {
             if (_isRunning) return;
             _isRunning = true;
+
             Logger.Log("Service is starting...");
 
             try
@@ -78,12 +79,13 @@ namespace Assist_Service
                 Logger.Log("Node configuration loaded successfully.");
 
                 // ===========================
-                // ✅ FIXED UDP INITIALIZATION
+                // ✅ CORRECT & SAFE UDP SETUP
                 // ===========================
                 Logger.Log("Initializing UDP client...");
 
-                _udpClient = new UdpClient();
+                _udpClient = new UdpClient(AddressFamily.InterNetwork); // ✅ Force IPv4
                 _udpClient.ExclusiveAddressUse = false;
+
                 _udpClient.Client.SetSocketOption(
                     SocketOptionLevel.Socket,
                     SocketOptionName.ReuseAddress,
@@ -100,7 +102,12 @@ namespace Assist_Service
                 _ruleService = new RuleProcessingService();
 
                 Logger.Log("Initializing services...");
-                _discoveryService = new DiscoveryService(_udpClient, _nodeConfig, _peers, _peersLock);
+
+                _discoveryService = new DiscoveryService(
+                    _udpClient,
+                    _nodeConfig,
+                    _peers,
+                    _peersLock);
 
                 _pipeService = new PipeCommunicationService(
                     _nodeConfig,
@@ -152,11 +159,15 @@ namespace Assist_Service
                     }
                 };
 
-                Thread monitor_Closure_Thread = new Thread(_appClosureService.MonitorApplicationClosures)
-                { IsBackground = true };
+                Thread monitorClosureThread = new Thread(_appClosureService.MonitorApplicationClosures)
+                {
+                    IsBackground = true
+                };
 
                 _AppClosureListenerThread = new Thread(_appClosureService.ListenForUdpClosureCommands)
-                { IsBackground = true };
+                {
+                    IsBackground = true
+                };
 
                 Logger.Log("All services initialized.");
 
@@ -168,7 +179,7 @@ namespace Assist_Service
                 _appMonitorService.Start();
                 _pipeService.Start();
 
-                monitor_Closure_Thread.Start();
+                monitorClosureThread.Start();
                 _AppClosureListenerThread.Start();
 
                 Logger.Log("All services started successfully.");
