@@ -1640,6 +1640,31 @@ namespace Assist_TSR.Forms
             }
         }
 
+        private void delete_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "Are you sure you want to delete the selected peers?\n\nThis action cannot be undone.",
+                    "Confirm Delete",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                );
+
+                if (result != DialogResult.Yes)
+                    return;
+
+                if (powerManager.DeleteSelectedNodes(selectionManager))
+                    MessageBox.Show("Selected peers deleted successfully.");
+                else
+                    MessageBox.Show("No peers were selected for deletion.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}");
+            }
+        }
+
         private void logUpdateTimer_Tick_1(object sender, EventArgs e)
         {
             UpdateServiceStatus();

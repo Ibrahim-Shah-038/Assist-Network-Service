@@ -344,6 +344,60 @@ namespace Assist_Service.IPC_Handler
             }
         }
 
+        // DELETING NODES
+
+        public bool DeleteSelectedNodes(PeerSelectionManager selectionManager)
+        {
+            string peersFilePath = File.Exists(DevFilePath) ? DevFilePath : ProdFilePath;
+
+            if (!File.Exists(peersFilePath))
+                throw new FileNotFoundException($"peers.json not found at {peersFilePath}");
+
+            string jsonContent = File.ReadAllText(peersFilePath);
+            var allPeers = JsonConvert.DeserializeObject<List<Peer>>(jsonContent)
+                           ?? new List<Peer>();
+
+            // Debug log
+            PWR_Log.PWR_Log($"Loaded {allPeers.Count} peers from file before deletion");
+
+            if (selectionManager.SelectedPeers == null ||
+                selectionManager.SelectedPeers.Count == 0)
+            {
+                PWR_Log.PWR_Log("⚠️ No peers selected for deletion.");
+                return false;
+            }
+
+            int beforeCount = allPeers.Count;
+
+            // Remove selected peers
+            allPeers.RemoveAll(p =>
+                selectionManager.SelectedPeers.Contains(p.NodeName));
+
+            int removedCount = beforeCount - allPeers.Count;
+
+            if (removedCount == 0)
+            {
+                PWR_Log.PWR_Log("⚠️ No matching peers found to delete.");
+                return false;
+            }
+
+            // Persist updated list
+            File.WriteAllText(
+                peersFilePath,
+                JsonConvert.SerializeObject(allPeers, Formatting.Indented)
+            );
+
+            // Log removed peers
+            foreach (string nodeName in selectionManager.SelectedPeers)
+            {
+                PWR_Log.PWR_Log($"🗑️ Deleted peer: {nodeName}");
+            }
+
+            PWR_Log.PWR_Log($"✅ Successfully deleted {removedCount} peer(s).");
+            return true;
+        }
+
+
         /// <summary>
         /// Returns the latest peer list (safe copy).
         /// </summary>

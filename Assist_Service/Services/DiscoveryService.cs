@@ -486,31 +486,52 @@ namespace Assist_Service.Services
             {
                 lock (_peersLock)
                 {
-                    foreach (var peer in _peers.ToList())
+                    foreach (var peer in _peers)
                     {
-                        if (peer.NodeName == _nodeConfig.NodeName || peer.LeftGracefully)
+                        // Skip self
+                        if (peer.NodeName == _nodeConfig.NodeName)
                             continue;
 
-                        double secondsSinceLastSeen = (DateTime.UtcNow - peer.LastSeen).TotalSeconds;
+                        // Skip peers that left gracefully (already handled elsewhere)
+                        if (peer.LeftGracefully)
+                            continue;
+
+                        double secondsSinceLastSeen =
+                            (DateTime.UtcNow - peer.LastSeen).TotalSeconds;
 
                         if (secondsSinceLastSeen > 10)
                         {
                             peer.MissedHeartbeats++;
 
-                            Logger.Log($"Peer {peer.NodeName} missed heartbeat #{peer.MissedHeartbeats}.");
+                            Logger.Log(
+                                $"Peer {peer.NodeName} missed heartbeat #{peer.MissedHeartbeats}."
+                            );
 
+                            // Instead of removing, mark as Offline
                             if (peer.MissedHeartbeats >= 5)
                             {
-                                Logger.Log($"Removing peer {peer.NodeName} after {peer.MissedHeartbeats} missed heartbeats (likely disconnected).");
-                                _peers.Remove(peer);
+                                if (peer.Status != "Offline")
+                                {
+                                    peer.Status = "Offline";
+                                    Logger.Log(
+                                        $"Peer {peer.NodeName} marked as OFFLINE (no auto-removal)."
+                                    );
+                                }
                             }
+                        }
+                        else
+                        {
+                            // Peer is healthy again
+                            peer.MissedHeartbeats = 0;
+                            peer.Status = "Online";
                         }
                     }
                 }
 
-                Thread.Sleep(10000); // Run cleanup every 10 seconds
+                Thread.Sleep(10000);
             }
         }
+
 
         public List<Peer> GetCurrentPeers()
         {

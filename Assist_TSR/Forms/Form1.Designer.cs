@@ -137,6 +137,7 @@ namespace Assist_TSR.Forms
             this.btnRefresh = new System.Windows.Forms.Button();
             this.Power_Management = new System.Windows.Forms.TabPage();
             this.panel11 = new System.Windows.Forms.Panel();
+            this.delete = new System.Windows.Forms.Button();
             this.power_up = new System.Windows.Forms.Button();
             this.select_all_2 = new System.Windows.Forms.RadioButton();
             this.panel13 = new System.Windows.Forms.Panel();
@@ -847,6 +848,7 @@ namespace Assist_TSR.Forms
             // 
             // panel11
             // 
+            this.panel11.Controls.Add(this.delete);
             this.panel11.Controls.Add(this.power_up);
             this.panel11.Controls.Add(this.select_all_2);
             this.panel11.Controls.Add(this.panel13);
@@ -855,6 +857,19 @@ namespace Assist_TSR.Forms
             this.panel11.Name = "panel11";
             this.panel11.Size = new System.Drawing.Size(396, 204);
             this.panel11.TabIndex = 5;
+            // 
+            // delete
+            // 
+            this.delete.BackColor = System.Drawing.Color.Red;
+            this.delete.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.delete.ForeColor = System.Drawing.Color.Transparent;
+            this.delete.Location = new System.Drawing.Point(220, 27);
+            this.delete.Name = "delete";
+            this.delete.Size = new System.Drawing.Size(75, 23);
+            this.delete.TabIndex = 9;
+            this.delete.Text = "Delete";
+            this.delete.UseVisualStyleBackColor = false;
+            this.delete.Click += new System.EventHandler(this.delete_Click);
             // 
             // power_up
             // 
@@ -1111,6 +1126,7 @@ namespace Assist_TSR.Forms
         private System.Windows.Forms.RadioButton select_all_2;
         private System.Windows.Forms.Button shutdown;
         private System.Windows.Forms.Button sleep;
+        private System.Windows.Forms.Button delete;
     }
 }
 
