@@ -57,6 +57,9 @@ namespace Assist_TSR.Forms
         private readonly object _statusLock = new object();
         private Listen_App_Status listen_app_status;
 
+        // PANELS 
+        private bool panel11SelectAll = false;
+
 
 
         // OBJECT DECLARATION
@@ -1609,20 +1612,13 @@ namespace Assist_TSR.Forms
         {
             var pcIcons = panel11.Controls.OfType<PictureBox>();
 
-            if (!selectAllActive)
-            {
-                // ✅ First click → Select all
+            panel11SelectAll = !panel11SelectAll;
+            select_all_2.Checked = panel11SelectAll;
+
+            if (panel11SelectAll)
                 selectionManager.SelectAll(pcIcons);
-                selectAllActive = true;
-                select_all.Checked = true;
-            }
             else
-            {
-                // ✅ Second click → Deselect all
                 selectionManager.DeselectAll(pcIcons);
-                selectAllActive = false;
-                select_all.Checked = false; // uncheck manually
-            }
         }
 
         private void power_up_Click(object sender, EventArgs e)

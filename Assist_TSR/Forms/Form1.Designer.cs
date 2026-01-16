@@ -894,6 +894,7 @@ namespace Assist_TSR.Forms
             this.select_all_2.TabStop = true;
             this.select_all_2.Text = "All";
             this.select_all_2.UseVisualStyleBackColor = true;
+            this.select_all_2.Click += new System.EventHandler(this.select_all_2_Click);
             // 
             // panel13
             // 
@@ -963,6 +964,7 @@ namespace Assist_TSR.Forms
             this.select_all.TabStop = true;
             this.select_all.Text = "All";
             this.select_all.UseVisualStyleBackColor = true;
+            
             // 
             // panel9
             // 

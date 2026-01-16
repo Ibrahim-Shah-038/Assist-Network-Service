@@ -62,8 +62,8 @@ namespace Assist_Service.Services
             Thread listenerThread = new Thread(ListenForMessages) { IsBackground = true };
             listenerThread.Start();
 
-            Thread cleanupThread = new Thread(CleanupPeers) { IsBackground = true };
-            cleanupThread.Start();
+            /*Thread cleanupThread = new Thread(CleanupPeers) { IsBackground = true };
+            cleanupThread.Start();*/
         }
 
         public void Stop()
@@ -480,7 +480,7 @@ namespace Assist_Service.Services
             }
         }
 
-        private void CleanupPeers()
+        /*private void CleanupPeers()
         {
             while (_isRunning)
             {
@@ -530,7 +530,7 @@ namespace Assist_Service.Services
 
                 Thread.Sleep(10000);
             }
-        }
+        }*/
 
 
         public List<Peer> GetCurrentPeers()
