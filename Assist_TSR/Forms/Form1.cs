@@ -27,6 +27,8 @@ using Assist_Service.IPC_Handler;
 using Assist_Service.Helpers;
 using Logging = Assist_TSR.Utilities.Logging;
 using FileHelper = Assist_TSR.Classes.FileHelper;
+//using System.Net.NetworkInformation;
+using System.Net.Sockets;
 
 
 
@@ -241,6 +243,19 @@ namespace Assist_TSR.Forms
             {
                 // Silent catch to avoid recursive logging exceptions
             }
+        }
+
+        public static bool IsNetworkConnected()
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Any(ni =>
+                    ni.OperationalStatus == OperationalStatus.Up &&
+                    ni.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                    ni.NetworkInterfaceType != NetworkInterfaceType.Tunnel &&
+                    ni.Supports(NetworkInterfaceComponent.IPv4) &&
+                    ni.GetIPProperties().UnicastAddresses
+                        .Any(ip => ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                );
         }
 
         // LINKED WITH REQUEST_DATA.CS FILE IN IPC_HANDLER FOLDER
@@ -717,9 +732,9 @@ namespace Assist_TSR.Forms
 
         private async void RefreshNetworkStatus()
         {
-            var peers = await peers_helper.GetPeersAsync();
+            bool isConnected = IsNetworkConnected();
 
-            if (peers.Count > 1)
+            if (isConnected)
             {
                 net_status.Text = "Connected to Network";
                 net_status.ForeColor = System.Drawing.Color.Green;
@@ -729,6 +744,8 @@ namespace Assist_TSR.Forms
                 net_status.Text = "Disconnected";
                 net_status.ForeColor = System.Drawing.Color.Red;
             }
+
+            await Task.CompletedTask; // keeps async signature clean
         }
 
         // GetPeersFromService and updates the DataGridView with the received list of peers

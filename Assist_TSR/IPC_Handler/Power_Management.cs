@@ -387,6 +387,10 @@ namespace Assist_Service.IPC_Handler
                 JsonConvert.SerializeObject(allPeers, Formatting.Indented)
             );
 
+            // Update in-memory cache and notify listeners
+            cachedPeers = new List<Peer>(allPeers);
+            OnPeersUpdated?.Invoke(cachedPeers);
+
             // Log removed peers
             foreach (string nodeName in selectionManager.SelectedPeers)
             {
@@ -396,6 +400,7 @@ namespace Assist_Service.IPC_Handler
             PWR_Log.PWR_Log($"✅ Successfully deleted {removedCount} peer(s).");
             return true;
         }
+
 
 
         /// <summary>
