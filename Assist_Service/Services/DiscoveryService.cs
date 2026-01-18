@@ -31,6 +31,8 @@ namespace Assist_Service.Services
         private static readonly TimeSpan RejoinIgnoreWindow = TimeSpan.FromSeconds(60);
 
         private readonly Logging Logger = new Logging();
+        private static readonly TimeSpan OfflineThreshold = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan CleanupInterval = TimeSpan.FromSeconds(10);
 
         string macAddress = NetworkHelper.GetMacAddress();
         string ipv4 = NetworkHelper.GetLocalIPv4(); // helper method you’ll add
@@ -62,8 +64,11 @@ namespace Assist_Service.Services
             Thread listenerThread = new Thread(ListenForMessages) { IsBackground = true };
             listenerThread.Start();
 
-            /*Thread cleanupThread = new Thread(CleanupPeers) { IsBackground = true };
-            cleanupThread.Start();*/
+            Thread cleanupThread = new Thread(CleanupPeers)
+            {
+                IsBackground = true
+            };
+            cleanupThread.Start();
         }
 
         public void Stop()
@@ -551,6 +556,77 @@ namespace Assist_Service.Services
                 }).ToList() ?? new List<Peer>();
             }
         }
+
+        private void CleanupPeers()
+        {
+            while (_isRunning)
+            {
+                try
+                {
+                    bool changed = false;
+
+                    lock (_peersLock)
+                    {
+                        foreach (var peer in _peers)
+                        {
+                            // Skip self
+                            if (peer.NodeName == _nodeConfig.NodeName)
+                                continue;
+
+                            // Graceful leave already handled
+                            if (peer.LeftGracefully)
+                                continue;
+
+                            var timeSinceLastSeen = DateTime.UtcNow - peer.LastSeen;
+
+                            if (timeSinceLastSeen > OfflineThreshold)
+                            {
+                                if (peer.Status != "Offline")
+                                {
+                                    peer.Status = "Offline";
+                                    peer.MissedHeartbeats++;
+                                    changed = true;
+
+                                    Logger.Log(
+                                        $"[Cleanup] Peer {peer.NodeName} marked OFFLINE (last seen {timeSinceLastSeen.TotalSeconds:N0}s ago)."
+                                    );
+                                }
+                            }
+                            else
+                            {
+                                // Peer revived
+                                if (peer.Status != "Online")
+                                {
+                                    peer.Status = "Online";
+                                    peer.MissedHeartbeats = 0;
+                                    changed = true;
+
+                                    Logger.Log(
+                                        $"[Cleanup] Peer {peer.NodeName} is back ONLINE."
+                                    );
+                                }
+                            }
+                        }
+
+                        // Persist only if something changed
+                        if (changed)
+                        {
+                            File.WriteAllText(
+                                _peersFile,
+                                JsonConvert.SerializeObject(_peers, Formatting.Indented)
+                            );
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"[Cleanup] Error: {ex.Message}");
+                }
+
+                Thread.Sleep(CleanupInterval);
+            }
+        }
+
 
         // Or if you want to return the actual reference (be careful with thread safety):
         public List<Peer> GetCurrentPeersReference()
