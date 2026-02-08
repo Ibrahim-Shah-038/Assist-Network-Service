@@ -175,6 +175,9 @@ namespace Assist_Service.Services
                     if (_peers == null)
                         _peers = new List<Peer>();
 
+                    // -------------------------------
+                    // 1️⃣ Merge peers.json into memory (MAC ONLY)
+                    // -------------------------------
                     if (File.Exists(_peersFile))
                     {
                         var json = File.ReadAllText(_peersFile);
@@ -183,15 +186,16 @@ namespace Assist_Service.Services
                         foreach (var filePeer in filePeers)
                         {
                             var existing = _peers.FirstOrDefault(p =>
-                                (!string.IsNullOrEmpty(p.MacAddress) &&
-                                 p.MacAddress.Equals(filePeer.MacAddress, StringComparison.OrdinalIgnoreCase)) ||
-                                (!string.IsNullOrEmpty(p.NodeName) &&
-                                 p.NodeName.Equals(filePeer.NodeName, StringComparison.OrdinalIgnoreCase)));
+                                !string.IsNullOrEmpty(p.MacAddress) &&
+                                p.MacAddress.Equals(filePeer.MacAddress, StringComparison.OrdinalIgnoreCase));
 
                             if (existing == null)
+                            {
                                 _peers.Add(filePeer);
+                            }
                             else
                             {
+                                // Sync persisted state (DO NOT overwrite identity)
                                 existing.IPAddress = filePeer.IPAddress;
                                 existing.Status = filePeer.Status;
                                 existing.LastSeen = filePeer.LastSeen;
@@ -202,59 +206,83 @@ namespace Assist_Service.Services
                         }
                     }
 
+                    // -------------------------------
+                    // 2️⃣ SELF-PROTECTION (MANDATORY)
+                    // -------------------------------
+                    if (!string.IsNullOrEmpty(macAddress) &&
+                        macAddress.Equals(this.macAddress, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Never update self from network
+                        return null;
+                    }
+
+                    // -------------------------------
+                    // 3️⃣ Find peer by MAC ONLY (CRITICAL FIX)
+                    // -------------------------------
                     var peer = _peers.FirstOrDefault(p =>
-                        (!string.IsNullOrEmpty(p.MacAddress) && p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(originalNodeName) && p.NodeName.Equals(originalNodeName, StringComparison.OrdinalIgnoreCase)) ||
-                        p.NodeName.Equals(peerName, StringComparison.OrdinalIgnoreCase));
+                        !string.IsNullOrEmpty(p.MacAddress) &&
+                        p.MacAddress.Equals(macAddress, StringComparison.OrdinalIgnoreCase));
 
                     if (peer != null)
                     {
                         bool wasOffline = peer.Status != "Online";
 
-                        // If peer had left gracefully, determine whether to ignore this incoming update
+                        // -------------------------------
+                        // 4️⃣ Graceful leave handling (UNCHANGED)
+                        // -------------------------------
                         if (peer.LeftGracefully)
                         {
-                            // If we have a timestamp, check elapsed time since graceful leave
                             if (peer.LeftGracefullyAt.HasValue)
                             {
                                 var elapsed = DateTime.UtcNow - peer.LeftGracefullyAt.Value;
                                 if (elapsed < RejoinIgnoreWindow)
                                 {
-                                    // Still within ignore window — keep offline and return
-                                    Console.WriteLine($"[UpdatePeer] Ignoring update for {peerName} — LeftGracefully and within ignore window ({elapsed.TotalSeconds:N1}s).");
+                                    Console.WriteLine(
+                                        $"[UpdatePeer] Ignoring update for {peer.NodeName} — LeftGracefully within ignore window ({elapsed.TotalSeconds:N1}s).");
                                     return peer;
                                 }
-                                // else: ignore window expired -> allow rejoin below
-                                Console.WriteLine($"[UpdatePeer] LeftGracefully window expired for {peerName} (elapsed {elapsed.TotalSeconds:N1}s). Allowing rejoin.");
+
+                                Console.WriteLine(
+                                    $"[UpdatePeer] LeftGracefully window expired for {peer.NodeName}. Allowing rejoin.");
                             }
                             else
                             {
-                                // No timestamp set — be conservative and ignore a single immediate update.
-                                Console.WriteLine($"[UpdatePeer] Ignoring update for {peerName} — LeftGracefully=true but no timestamp set.");
+                                Console.WriteLine(
+                                    $"[UpdatePeer] Ignoring update for {peer.NodeName} — LeftGracefully with no timestamp.");
                                 return peer;
                             }
 
-                            // At this point we allow the rejoin: reset the flag
                             peer.LeftGracefully = false;
                             peer.LeftGracefullyAt = null;
                         }
 
-                        peer.NodeName = peerName;
+                        // -------------------------------
+                        // 5️⃣ SAFE RENAME SUPPORT
+                        // -------------------------------
+                        if (!string.Equals(peer.NodeName, peerName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine(
+                                $"[UpdatePeer] Rename detected: {peer.NodeName} → {peerName}");
+                            peer.NodeName = peerName;
+                        }
+
+                        // -------------------------------
+                        // 6️⃣ Update runtime state
+                        // -------------------------------
                         peer.IPAddress = ipAddress;
-                        peer.MacAddress = macAddress;
                         peer.LastSeen = DateTime.UtcNow;
                         peer.Status = "Online";
                         peer.MissedHeartbeats = 0;
                         peer.EndPoint = endpoint;
 
                         if (wasOffline)
-                            Console.WriteLine($"[UpdatePeer] Peer {peerName} is back online.");
-
-                        Console.WriteLine($"[UpdatePeer] Updated peer: {peerName} ({ipAddress})");
+                            Console.WriteLine($"[UpdatePeer] Peer {peer.NodeName} is back online.");
                     }
                     else
                     {
-                        // New peer (fresh join)
+                        // -------------------------------
+                        // 7️⃣ New peer (MAC not seen before)
+                        // -------------------------------
                         peer = new Peer
                         {
                             NodeName = peerName,
@@ -272,6 +300,9 @@ namespace Assist_Service.Services
                         Console.WriteLine($"[UpdatePeer] New peer discovered: {peerName} @ {ipAddress}");
                     }
 
+                    // -------------------------------
+                    // 8️⃣ Persist state
+                    // -------------------------------
                     File.WriteAllText(_peersFile, JsonConvert.SerializeObject(_peers, Formatting.Indented));
 
                     return peer;
@@ -283,6 +314,7 @@ namespace Assist_Service.Services
                 }
             }
         }
+
 
         // Extended version: updates in-memory + persists
         // Extended version: updates in-memory + persists with original identifiers

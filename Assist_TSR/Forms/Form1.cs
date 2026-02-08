@@ -525,8 +525,10 @@ namespace Assist_TSR.Forms
 
             UpdateServiceStatus();
             RefreshNetworkStatus();
-            
 
+            // 🔥 Subscribe to real-time network events
+            NetworkChange.NetworkAddressChanged += NetworkChanged;
+            NetworkChange.NetworkAvailabilityChanged += NetworkAvailabilityChanged;
         }
 
         private void start_Click(object sender, EventArgs e)
@@ -728,7 +730,19 @@ namespace Assist_TSR.Forms
             }
         }
 
-        //Sending the GET_PEERS
+        // Refreshing Network Status
+
+        private void NetworkChanged(object sender, EventArgs e)
+        {
+            // Fired on background thread
+            this.BeginInvoke((MethodInvoker)RefreshNetworkStatus);
+        }
+
+        private void NetworkAvailabilityChanged(object sender, NetworkAvailabilityEventArgs e)
+        {
+            this.BeginInvoke((MethodInvoker)RefreshNetworkStatus);
+        }
+
 
         private async void RefreshNetworkStatus()
         {
