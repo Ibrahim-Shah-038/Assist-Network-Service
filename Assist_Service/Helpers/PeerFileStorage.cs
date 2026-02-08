@@ -153,126 +153,78 @@ namespace Assist_Service.Helpers
                 {
                     PWR_Log.PWR_Log("[MarkPeerOffline] Acquired lock");
 
+                    // Ensure in-memory list exists
                     if (_peers == null)
                     {
                         PWR_Log.PWR_Log("[MarkPeerOffline] _peers is null -> initializing new list");
                         _peers = new List<Peer>();
                     }
-                    else
-                    {
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] _peers already initialized. Current count: {_peers.Count}");
-                    }
 
-                    // Load peers from file (merge)
-                    if (File.Exists(FilePath))
+                    // 🔒 LOAD FROM FILE ONLY ONCE (initial load)
+                    if (_peers.Count == 0 && File.Exists(FilePath))
                     {
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] peers file exists at: {FilePath}");
+                        PWR_Log.PWR_Log("[MarkPeerOffline] Initial load from peers.json");
 
                         var json = File.ReadAllText(FilePath);
-                        if (json == null)
-                        {
-                            PWR_Log.PWR_Log("[MarkPeerOffline] ReadFile returned null json");
-                        }
-                        else
-                        {
-                            PWR_Log.PWR_Log($"[MarkPeerOffline] ReadFile length: {json.Length} chars");
-                            var previewLen = Math.Min(500, json.Length);
-                            PWR_Log.PWR_Log($"[MarkPeerOffline] peers.json preview: {json.Substring(0, previewLen)}{(json.Length > previewLen ? "..." : "")}");
-                        }
+                        _peers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
 
-                        var filePeers = JsonConvert.DeserializeObject<List<Peer>>(json) ?? new List<Peer>();
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] Deserialized filePeers count: {filePeers.Count}");
-
-                        int idx = 0;
-                        foreach (var filePeer in filePeers)
-                        {
-                            PWR_Log.PWR_Log($"[MarkPeerOffline] Inspecting filePeer index={idx}");
-
-                            if (filePeer == null)
-                            {
-                                PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}] is null -> skipping");
-                                idx++;
-                                continue;
-                            }
-
-                            if (string.IsNullOrEmpty(filePeer.MacAddress))
-                            {
-                                PWR_Log.PWR_Log($"[MarkPeerOffline] filePeer[{idx}].MacAddress is null/empty -> skipping");
-                                idx++;
-                                continue;
-                            }
-
-                            bool alreadyExists = _peers.Any(p =>
-                                p != null &&
-                                !string.IsNullOrEmpty(p.MacAddress) &&
-                                string.Equals(p.MacAddress, filePeer.MacAddress, StringComparison.OrdinalIgnoreCase));
-
-                            if (!alreadyExists)
-                            {
-                                _peers.Add(filePeer);
-                                PWR_Log.PWR_Log($"[MarkPeerOffline] Added filePeer[{idx}] to in-memory list. New _peers count: {_peers.Count}");
-                            }
-
-                            idx++;
-                        }
-                    }
-                    else
-                    {
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] peers file does not exist at: {FilePath}");
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Loaded {_peers.Count} peers from file");
                     }
 
-                    // Validate inputs before proceeding
+                    // Validate inputs
                     if (string.IsNullOrEmpty(macAddress) && string.IsNullOrEmpty(nodeName))
                     {
-                        PWR_Log.PWR_Log("[MarkPeerOffline] Both macAddress and nodeName are null/empty -> nothing to do. EXIT");
+                        PWR_Log.PWR_Log("[MarkPeerOffline] Both macAddress and nodeName are null/empty -> EXIT");
                         return;
                     }
 
-                    PWR_Log.PWR_Log($"[MarkPeerOffline] Searching for peer. Current in-memory count: {_peers.Count}");
+                    PWR_Log.PWR_Log($"[MarkPeerOffline] Searching peer in-memory. Count: {_peers.Count}");
 
-                    // Find target peer safely
-                    var peer = _peers.FirstOrDefault(p =>
-                        p != null &&
-                        (
-                            (!string.IsNullOrEmpty(macAddress) &&
-                             !string.IsNullOrEmpty(p.MacAddress) &&
-                             string.Equals(p.MacAddress, macAddress, StringComparison.OrdinalIgnoreCase))
-                            ||
-                            (!string.IsNullOrEmpty(nodeName) &&
-                             !string.IsNullOrEmpty(p.NodeName) &&
-                             string.Equals(p.NodeName, nodeName, StringComparison.OrdinalIgnoreCase))
-                        ));
+                    Peer peer = null;
+
+                    // ✅ PRIMARY MATCH: MAC ADDRESS (authoritative)
+                    if (!string.IsNullOrEmpty(macAddress))
+                    {
+                        peer = _peers.FirstOrDefault(p =>
+                            p != null &&
+                            !string.IsNullOrEmpty(p.MacAddress) &&
+                            string.Equals(p.MacAddress, macAddress, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    // ✅ FALLBACK MATCH: NODE NAME (only if MAC not found)
+                    if (peer == null && !string.IsNullOrEmpty(nodeName))
+                    {
+                        peer = _peers.FirstOrDefault(p =>
+                            p != null &&
+                            !string.IsNullOrEmpty(p.NodeName) &&
+                            string.Equals(p.NodeName, nodeName, StringComparison.OrdinalIgnoreCase));
+                    }
 
                     if (peer != null)
                     {
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer. NodeName='{peer.NodeName ?? "null"}', MacAddress='{peer.MacAddress ?? "null"}', Status='{peer.Status ?? "null"}'");
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Found peer. Node='{peer.NodeName}', MAC='{peer.MacAddress}', Status='{peer.Status}'");
 
-                        // --- KEEP EXISTING BEHAVIOR ---
+                        // --- EXISTING BEHAVIOR (UNCHANGED) ---
                         peer.Status = "Offline";
                         peer.LeftGracefully = true;
                         peer.LastSeen = DateTime.UtcNow;
-
-                        // --- NEW LOGIC: mark when it left gracefully ---
                         peer.LeftGracefullyAt = DateTime.UtcNow;
 
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] Marking LeftGracefullyAt={peer.LeftGracefullyAt:O}");
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Marked Offline at {peer.LeftGracefullyAt:O}");
 
-                        // Persist the updated list to disk
-                        PWR_Log.PWR_Log("[MarkPeerOffline] Serializing updated _peers to JSON");
+                        // Persist updated list
                         var updatedJson = JsonConvert.SerializeObject(_peers, Formatting.Indented);
 
-                        // Safer atomic write
                         var tempFile = FilePath + ".tmp";
                         File.WriteAllText(tempFile, updatedJson);
                         File.Copy(tempFile, FilePath, true);
                         File.Delete(tempFile);
 
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] Persisted updated peers.json. Total peers saved: {_peers.Count}");
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] Marked peer Offline - Node: {peer.NodeName}, MAC: {peer.MacAddress}");
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Persisted peers.json. Total peers: {_peers.Count}");
                     }
                     else
                     {
-                        PWR_Log.PWR_Log($"[MarkPeerOffline] Peer not found to mark Offline - Node: {nodeName ?? "null"}, MAC: {macAddress ?? "null"}");
+                        PWR_Log.PWR_Log($"[MarkPeerOffline] Peer NOT FOUND. Node='{nodeName ?? "null"}', MAC='{macAddress ?? "null"}'");
                     }
                 }
                 catch (Exception ex)
