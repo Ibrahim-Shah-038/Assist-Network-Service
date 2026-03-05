@@ -135,6 +135,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_5D518AD6351845C59FAF22D81FC7294C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_5EEBB413166371C4FFF478DAF763AA09"
         "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
         "MsmSig" = "8:_UNDEFINED"
@@ -286,12 +292,6 @@
         "Entry"
         {
         "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
-        "OwnerKey" = "8:_A46946C31CC9401C8514BF264C64A299"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
         "OwnerKey" = "8:_EC68FA95F99C40748F70F6D3C37E2A12"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -299,6 +299,18 @@
         {
         "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
         "OwnerKey" = "8:_A61667F7EE904F2F9824ADA5EBBA95F0"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
+        "OwnerKey" = "8:_A46946C31CC9401C8514BF264C64A299"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_A86CC360202499804716D5986CA07A44"
+        "OwnerKey" = "8:_5D518AD6351845C59FAF22D81FC7294C"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -478,7 +490,7 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_A46946C31CC9401C8514BF264C64A299"
+        "OwnerKey" = "8:_D5E6DEF98B2F495AA597F3D824E9855F"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -521,6 +533,18 @@
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_D7933C9021C36178C24952D7FC07AA70"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_A46946C31CC9401C8514BF264C64A299"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_5D518AD6351845C59FAF22D81FC7294C"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -617,7 +641,7 @@
             {
             "Enabled" = "11:TRUE"
             "PromptEnabled" = "11:TRUE"
-            "PrerequisitesLocation" = "2:1"
+            "PrerequisitesLocation" = "2:2"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
                 "Items"
@@ -1186,6 +1210,11 @@
             "AssemblyAsmDisplayName" = "8:Assist_InstallerUI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
+                    "_D5E6DEF98B2F495AA597F3D824E9855F"
+                    {
+                    "Name" = "8:Assist_InstallerUI.dll"
+                    "Attributes" = "3:512"
+                    }
                 }
             "SourcePath" = "8:..\\Assist_InstallerUI\\bin\\Debug\\Assist_InstallerUI.dll"
             "TargetName" = "8:"
@@ -2283,9 +2312,37 @@
                 {
                 }
             }
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_5D518AD6351845C59FAF22D81FC7294C"
+            {
+            "SourcePath" = "8:..\\Assist_InstallerUI\\obj\\Debug\\Assist_InstallerUI.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            "ProjectOutputGroupRegister" = "3:1"
+            "OutputConfiguration" = "8:"
+            "OutputGroupCanonicalName" = "8:Built"
+            "OutputProjectGuid" = "8:{456507DB-E916-495E-AA0B-CB96D323A83C}"
+            "ShowKeyOutput" = "11:TRUE"
+                "ExcludeFilters"
+                {
+                }
+            }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_A46946C31CC9401C8514BF264C64A299"
             {
-            "SourcePath" = "8:..\\Assist_InstallerUI\\obj\\Debug\\Assist_InstallerUI.exe"
+            "SourcePath" = "8:..\\Assist_InstallerUI\\obj\\Debug\\Assist_InstallerUI.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
@@ -2341,7 +2398,7 @@
             }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_EC68FA95F99C40748F70F6D3C37E2A12"
             {
-            "SourcePath" = "8:..\\Assist_InstallerUI\\obj\\Debug\\Assist_InstallerUI.exe"
+            "SourcePath" = "8:..\\Assist_InstallerUI\\obj\\Debug\\Assist_InstallerUI.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_BF5E4DA814AF4881907A953C0B7DF42B"
