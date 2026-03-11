@@ -210,6 +210,7 @@ namespace Assist_Service.Services
             while (_isRunning)
             {
                 NamedPipeServerStream pipeServer = null;
+
                 try
                 {
                     pipeServer = new NamedPipeServerStream(
@@ -217,7 +218,7 @@ namespace Assist_Service.Services
                         PipeDirection.InOut,
                         NamedPipeServerStream.MaxAllowedServerInstances,
                         PipeTransmissionMode.Byte,
-                        PipeOptions.None,
+                        PipeOptions.Asynchronous,
                         4096,
                         4096,
                         CreatePipeSecurity());
@@ -225,32 +226,32 @@ namespace Assist_Service.Services
                     pipeServer.WaitForConnection();
 
                     using (var reader = new StreamReader(pipeServer))
-                    using (var writer = new StreamWriter(pipeServer))
+                    using (var writer = new StreamWriter(pipeServer) { AutoFlush = true })
                     {
                         string request = reader.ReadLine();
+
+                        if (string.IsNullOrEmpty(request))
+                            return;
 
                         if (request == "GET_NODE_NAME")
                         {
                             writer.WriteLine(_nodeConfig?.NodeName ?? "Unknown");
-                            writer.Flush();
                         }
-                        else if (request?.StartsWith("UPDATE_NODE_NAME:") == true)
+                        else if (request.StartsWith("UPDATE_NODE_NAME:"))
                         {
                             string newNodeName = request.Substring("UPDATE_NODE_NAME:".Length);
                             UpdateNodeConfig(newNodeName);
                             writer.WriteLine("OK");
-                            writer.Flush();
                         }
                         else
                         {
                             writer.WriteLine("ERROR: Invalid request");
-                            writer.Flush();
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log error
+                    Logger.Log("NodeNamePipe Error: " + ex.Message);
                 }
                 finally
                 {
@@ -320,29 +321,25 @@ namespace Assist_Service.Services
                         {
                             string request = reader.ReadLine();
 
-                            while (true)
+                            if (request == "GET_ACTIVE_PRESET")
                             {
-                                if (request == "GET_ACTIVE_PRESET")
-                                {
-                                    string configPath = GetActiveConfigPath();
-                                    string configFileName = Path.GetFileName(configPath);
-                                    Logger.Log($"The file path is returned to the server and returning to client: {configFileName}");
-                                    writer.WriteLine(configFileName);
-                                    writer.Flush();
-                                    
-                                }
-                                else
-                                {
-                                    writer.WriteLine("ERROR: Invalid request");
-                                    writer.Flush();
-                                }
+                                string configPath = GetActiveConfigPath();
+                                string configFileName = Path.GetFileName(configPath);
+
+                                writer.WriteLine(configFileName);
+                                writer.Flush();
+                            }
+                            else
+                            {
+                                writer.WriteLine("ERROR");
+                                writer.Flush();
                             }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log error
+                    Logger.Log(ex.ToString());
                 }
             }
         }
