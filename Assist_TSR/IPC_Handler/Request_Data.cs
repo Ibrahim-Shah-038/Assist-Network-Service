@@ -38,7 +38,7 @@ namespace Assist_TSR.IPC_Handler
 
                 // Connect with timeout (same as synchronous version)
                 var connectTask = pipeClient.ConnectAsync();
-                var timeoutTask = Task.Delay(1000);
+                var timeoutTask = Task.Delay(5000);
                 var completedTask = await Task.WhenAny(connectTask, timeoutTask);
 
                 if (completedTask == timeoutTask)
