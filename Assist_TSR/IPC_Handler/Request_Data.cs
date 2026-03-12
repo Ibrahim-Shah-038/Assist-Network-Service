@@ -22,56 +22,50 @@ namespace Assist_TSR.IPC_Handler
             form = formInstance;
         }
 
-        
+
 
         // GETTING DATA FOR GENERAL TAB FROM SERVICE
         public async Task<string> RequestDataFromServiceAsync(string requestType)
         {
-            NamedPipeClientStream pipeClient = null;
-            try
+            string pipeName = requestType == "GET_NODE_NAME"
+                ? "AssistNodeNamePipe"
+                : "AssistActivePresetPipe";
+
+            int retryCount = 5;
+
+            for (int i = 0; i < retryCount; i++)
             {
-                string pipeName = requestType == "GET_NODE_NAME"
-                    ? "AssistNodeNamePipe"
-                    : "AssistActivePresetPipe";
+                NamedPipeClientStream pipeClient = null;
 
-                pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
-
-                // Connect with timeout (same as synchronous version)
-                var connectTask = pipeClient.ConnectAsync();
-                var timeoutTask = Task.Delay(5000);
-                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
-
-                if (completedTask == timeoutTask)
+                try
                 {
-                    throw new System.TimeoutException("Service connection timeout");
+                    pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
+
+                    var connectTask = pipeClient.ConnectAsync(2000);
+                    await connectTask;
+
+                    var writer = new StreamWriter(pipeClient) { AutoFlush = true };
+                    await writer.WriteLineAsync(requestType);
+
+                    var reader = new StreamReader(pipeClient);
+                    string response = await reader.ReadLineAsync();
+
+                    ResetWarning();
+                    return response ?? "Unknown";
                 }
-                await connectTask; // This will throw if there was a connection error
+                catch
+                {
+                    // wait before retry
+                    await Task.Delay(1000);
+                }
+                finally
+                {
+                    pipeClient?.Dispose();
+                }
+            }
 
-                // Write request
-                var writer = new StreamWriter(pipeClient) { AutoFlush = true };
-                await writer.WriteLineAsync(requestType);
-
-                // Read response
-                var reader = new StreamReader(pipeClient);
-                string response = await reader.ReadLineAsync();
-
-                ResetWarning();
-                return response ?? "Unknown";
-            }
-            catch (System.TimeoutException)
-            {
-                WarnOnce("Service connection timeout");
-                return "Unknown";
-            }
-            catch (Exception ex)
-            {
-                WarnOnce($"Service communication failed: {ex.Message}");
-                return "Unknown";
-            }
-            finally
-            {
-                pipeClient?.Dispose();
-            }
+            WarnOnce("Service not ready");
+            return "Unknown";
         }
 
         public void WarnOnce(string message)

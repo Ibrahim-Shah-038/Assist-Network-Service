@@ -310,11 +310,14 @@ namespace Assist_TSR.Forms
         {
             try
             {
-                string nodeName = await fetch_data.FetchDataAsync("GET_NODE_NAME");
-                node_value.Text = nodeName;
 
-                string activePreset = await fetch_data.FetchDataAsync("GET_ACTIVE_PRESET");
-                preset_value.Text = activePreset;
+                var nodeTask = fetch_data.FetchDataAsync("GET_NODE_NAME");
+                var presetTask = fetch_data.FetchDataAsync("GET_ACTIVE_PRESET");
+
+                await Task.WhenAll(nodeTask, presetTask);
+
+                node_value.Text = nodeTask.Result;
+                preset_value.Text = presetTask.Result;
 
                 con_stat_val.Text = isRunning ? "Running" : "Stopped";
             }
